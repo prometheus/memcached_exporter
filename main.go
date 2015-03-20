@@ -130,9 +130,9 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 		m, err := strconv.ParseUint(stats[server]["uptime"], 10, 64)
 		if err != nil {
-			e.removals.WithLabelValues(server.String()).Set(0)
+			e.uptime.WithLabelValues(server.String()).Set(0)
 		} else {
-			e.removals.WithLabelValues(server.String()).Set(float64(m))
+			e.uptime.WithLabelValues(server.String()).Set(float64(m))
 		}
 
 		for _, op := range cacheOperations {
