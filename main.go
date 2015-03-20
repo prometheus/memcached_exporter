@@ -174,11 +174,11 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 				e.removals.WithLabelValues(server.String(), st, "unfetched").Set(float64(m))
 			}
 		}
-		m, err = strconv.ParseUint(stats[server]["evictions"], 10, 64)
+		m, err = strconv.ParseUint(stats[server]["evicted"], 10, 64)
 		if err != nil {
-			e.removals.WithLabelValues(server.String(), "evictions", "fetched").Set(0)
+			e.removals.WithLabelValues(server.String(), "evicted", "fetched").Set(0)
 		} else {
-			e.removals.WithLabelValues(server.String(), "evictions", "fetched").Set(float64(m))
+			e.removals.WithLabelValues(server.String(), "evicted", "fetched").Set(float64(m))
 		}
 	}
 
