@@ -1,0 +1,4 @@
+.build
+memcache_exporter
+*.tar.gz
+*-stamp
