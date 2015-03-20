@@ -1,3 +1,3 @@
-FROM golang:1.4-cross
+FROM golang:1.4-onbuild
 
-ENV memcache_server memcache:11211
+ENTRYPOINT ["./memcache_exporter", "-logtostderr", "memcache:11211"]
