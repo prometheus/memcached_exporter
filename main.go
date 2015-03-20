@@ -2,10 +2,12 @@ package main
 
 import (
 	"flag"
+	"strings"
 	"fmt"
 	"net/http"
 	"strconv"
 	"sync"
+	"os"
 
 	"github.com/Snapbug/gomemcache/memcache"
 	"github.com/golang/glog"
@@ -179,7 +181,12 @@ func main() {
 	)
 	flag.Parse()
 
-	mc := memcache.New(flag.Args()...)
+	env := os.Getenv("memcache_servers")
+	if env == "" {
+		glog.Fatalf("No servers specified")
+	}
+
+	mc := memcache.New(strings.Split(env, ",")...)
 	exporter := NewExporter(mc)
 
 	prometheus.MustRegister(exporter)
