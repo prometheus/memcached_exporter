@@ -1,0 +1,52 @@
+{
+	"ImportPath": "github.com/Snapbug/memcache_exporter",
+	"GoVersion": "go1.4.1",
+	"Deps": [
+		{
+			"ImportPath": "bitbucket.org/ww/goautoneg",
+			"Comment": "null-5",
+			"Rev": "75cd24fc2f2c2a2088577d12123ddee5f54e0675"
+		},
+		{
+			"ImportPath": "github.com/Snapbug/gomemcache/memcache",
+			"Comment": "release.r60-42-g4b31ef3",
+			"Rev": "4b31ef35b5d775c9bfc986bc4e87acbbbc68ee17"
+		},
+		{
+			"ImportPath": "github.com/beorn7/perks/quantile",
+			"Rev": "b965b613227fddccbfffe13eae360ed3fa822f8d"
+		},
+		{
+			"ImportPath": "github.com/golang/glog",
+			"Rev": "44145f04b68cf362d9c4df2182967c2275eaefed"
+		},
+		{
+			"ImportPath": "github.com/golang/protobuf/proto",
+			"Rev": "c22ae3cf020a21ebb7ae566dccbe90fc8ea4f9ea"
+		},
+		{
+			"ImportPath": "github.com/matttproud/golang_protobuf_extensions/ext",
+			"Rev": "ba7d65ac66e9da93a714ca18f6d1bc7a0c09100c"
+		},
+		{
+			"ImportPath": "github.com/prometheus/client_golang/model",
+			"Comment": "0.3.2",
+			"Rev": "1cf6d4b964951c63779ba7513c57fe389b609014"
+		},
+		{
+			"ImportPath": "github.com/prometheus/client_golang/prometheus",
+			"Comment": "0.3.2",
+			"Rev": "1cf6d4b964951c63779ba7513c57fe389b609014"
+		},
+		{
+			"ImportPath": "github.com/prometheus/client_golang/text",
+			"Comment": "0.3.2",
+			"Rev": "1cf6d4b964951c63779ba7513c57fe389b609014"
+		},
+		{
+			"ImportPath": "github.com/prometheus/client_model/go",
+			"Comment": "model-0.0.2-12-gfa8ad6f",
+			"Rev": "fa8ad6fec33561be4280a8f0514318c79d7f6cb6"
+		}
+	]
+}
