@@ -2,12 +2,12 @@ package main
 
 import (
 	"flag"
-	"strings"
 	"fmt"
 	"net/http"
-	"strconv"
-	"sync"
 	"os"
+	"strconv"
+	"strings"
+	"sync"
 
 	"github.com/Snapbug/gomemcache/memcache"
 	"github.com/golang/glog"
@@ -18,6 +18,16 @@ const (
 	namespace = "memcache"
 )
 
+var (
+	cacheOperations  = []string{"get", "delete", "incr", "decr", "cas", "touch"}
+	cacheStatuses    = []string{"hits", "misses"}
+	usageTimes       = []string{"current", "total"}
+	usageResources   = []string{"items", "connections"}
+	bytesDirections  = []string{"read", "written"}
+	removalsStatuses = []string{"expired", "evicted"}
+)
+
+// Exporter collects metrics from a set of memcache servers.
 type Exporter struct {
 	mutex    sync.RWMutex
 	mc       *memcache.Client
@@ -29,6 +39,7 @@ type Exporter struct {
 	removals *prometheus.CounterVec
 }
 
+// NewExporter returns an initialized exporter
 func NewExporter(mc *memcache.Client) *Exporter {
 	return &Exporter{
 		mc: mc,
@@ -36,7 +47,7 @@ func NewExporter(mc *memcache.Client) *Exporter {
 			prometheus.GaugeOpts{
 				Name:      "up",
 				Namespace: namespace,
-				Help:      "If the servers were up.",
+				Help:      "Are the servers up.",
 			},
 			[]string{"server"},
 		),
@@ -44,7 +55,7 @@ func NewExporter(mc *memcache.Client) *Exporter {
 			prometheus.CounterOpts{
 				Name:      "uptime",
 				Namespace: namespace,
-				Help:      "The time the server has been up.",
+				Help:      "The uptime of the server.",
 			},
 			[]string{"server"},
 		),
@@ -52,7 +63,7 @@ func NewExporter(mc *memcache.Client) *Exporter {
 			prometheus.CounterOpts{
 				Name:      "cache",
 				Namespace: namespace,
-				Help:      "The cache operations broken down by command and result (hit or miss).",
+				Help:      "The cache hits/misses broken down by command (get, set, etc.).",
 			},
 			[]string{"server", "command", "status"},
 		),
@@ -60,7 +71,7 @@ func NewExporter(mc *memcache.Client) *Exporter {
 			prometheus.GaugeOpts{
 				Name:      "usage",
 				Namespace: namespace,
-				Help:      "Details the usage of the server, by time (current/total) and resource (items/connections).",
+				Help:      "Details the resource usage (items/connections) of the server, by time (current/total).",
 			},
 			[]string{"server", "time", "resource"},
 		),
@@ -76,13 +87,15 @@ func NewExporter(mc *memcache.Client) *Exporter {
 			prometheus.CounterOpts{
 				Name:      "removal",
 				Namespace: namespace,
-				Help:      "Removal statuses from the cache either expired/evicted and if they were touched.",
+				Help:      "Number of items that have been evicted/expired (status), and if the were fetched ever or not.",
 			},
 			[]string{"server", "status", "fetched"},
 		),
 	}
 }
 
+// Describe describes all the metrics exported by the memcache exporter. It
+// implements prometheus.Collector.
 func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	e.up.Describe(ch)
 	e.cache.Describe(ch)
@@ -91,7 +104,10 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	e.removals.Describe(ch)
 }
 
+// Collect fetches the statistics from the configured memcache servers, and
+// delivers them as prometheus metrics. It implements prometheus.Collector.
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
+	// prevent concurrent metric collections
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 
@@ -105,7 +121,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	stats, err := e.mc.Stats()
 
 	if err != nil {
-		glog.Fatalf("Failed to collect stats from memcache: %s", err)
+		glog.Infof("Failed to collect stats from memcache: %s", err)
 		return
 	}
 
@@ -119,43 +135,43 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			e.removals.WithLabelValues(server.String()).Set(float64(m))
 		}
 
-		for _, c := range []string{"get", "delete", "incr", "decr", "cas", "touch"} {
-			for _, s := range []string{"hits", "misses"} {
-				m, err := strconv.ParseUint(stats[server][fmt.Sprintf("%s_%s", c, s)], 10, 64)
+		for _, op := range cacheOperations {
+			for _, st := range cacheStatuses {
+				m, err := strconv.ParseUint(stats[server][fmt.Sprintf("%s_%s", op, st)], 10, 64)
 				if err != nil {
-					e.cache.WithLabelValues(server.String(), c, s).Set(0)
+					e.cache.WithLabelValues(server.String(), op, st).Set(0)
 				} else {
-					e.cache.WithLabelValues(server.String(), c, s).Set(float64(m))
+					e.cache.WithLabelValues(server.String(), op, st).Set(float64(m))
 				}
 			}
 		}
 
-		for _, c := range []string{"current", "total"} {
-			for _, s := range []string{"items", "connections"} {
-				m, err := strconv.ParseUint(stats[server][fmt.Sprintf("%s_%s", c, s)], 10, 64)
+		for _, t := range usageTimes {
+			for _, r := range usageResources {
+				m, err := strconv.ParseUint(stats[server][fmt.Sprintf("%s_%s", t, r)], 10, 64)
 				if err != nil {
-					e.usage.WithLabelValues(server.String(), c, s).Set(0)
+					e.usage.WithLabelValues(server.String(), t, r).Set(0)
 				} else {
-					e.usage.WithLabelValues(server.String(), c, s).Set(float64(m))
+					e.usage.WithLabelValues(server.String(), t, r).Set(float64(m))
 				}
 			}
 		}
 
-		for _, c := range []string{"read", "written"} {
-			m, err := strconv.ParseUint(stats[server][fmt.Sprintf("bytes_%s", c)], 10, 64)
+		for _, dir := range bytesDirections {
+			m, err := strconv.ParseUint(stats[server][fmt.Sprintf("bytes_%s", dir)], 10, 64)
 			if err != nil {
-				e.bytes.WithLabelValues(server.String(), c).Set(0)
+				e.bytes.WithLabelValues(server.String(), dir).Set(0)
 			} else {
-				e.bytes.WithLabelValues(server.String(), c).Set(float64(m))
+				e.bytes.WithLabelValues(server.String(), dir).Set(float64(m))
 			}
 		}
 
-		for _, c := range []string{"expired", "evicted"} {
-			m, err := strconv.ParseUint(stats[server][fmt.Sprintf("%s_unfetched", c)], 10, 64)
+		for _, st := range removalsStatuses {
+			m, err := strconv.ParseUint(stats[server][fmt.Sprintf("%s_unfetched", st)], 10, 64)
 			if err != nil {
-				e.removals.WithLabelValues(server.String(), c, "unfetched").Set(0)
+				e.removals.WithLabelValues(server.String(), st, "unfetched").Set(0)
 			} else {
-				e.removals.WithLabelValues(server.String(), c, "unfetched").Set(float64(m))
+				e.removals.WithLabelValues(server.String(), st, "unfetched").Set(float64(m))
 			}
 		}
 		m, err = strconv.ParseUint(stats[server]["evictions"], 10, 64)
