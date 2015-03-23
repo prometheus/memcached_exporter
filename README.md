@@ -27,7 +27,7 @@ own Dockerfile, and overwrite the `CMD` setting. This is also the way to enable
 logging etc.
 
 ```
-FROM snapbug/memcached-exporter
+FROM snapbug/memcache-exporter
 CMD ["yourserver:yourport"]
 ```
 
