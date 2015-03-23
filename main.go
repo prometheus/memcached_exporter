@@ -4,9 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
-	"os"
 	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/Snapbug/gomemcache/memcache"
@@ -31,8 +29,8 @@ var (
 type Exporter struct {
 	mutex    sync.RWMutex
 	mc       *memcache.Client
-	up       *prometheus.GaugeVec
-	uptime   *prometheus.CounterVec
+	up       prometheus.Gauge
+	uptime   prometheus.Counter
 	cache    *prometheus.CounterVec
 	usage    *prometheus.GaugeVec
 	bytes    *prometheus.CounterVec
@@ -40,56 +38,60 @@ type Exporter struct {
 }
 
 // NewExporter returns an initialized exporter
-func NewExporter(mc *memcache.Client) *Exporter {
+func NewExporter(server string) *Exporter {
 	return &Exporter{
-		mc: mc,
-		up: prometheus.NewGaugeVec(
+		mc: memcache.New(server),
+		up: prometheus.NewGauge(
 			prometheus.GaugeOpts{
-				Name:      "up",
-				Namespace: namespace,
-				Help:      "Are the servers up.",
+				Name:        "up",
+				Namespace:   namespace,
+				Help:        "Are the servers up.",
+				ConstLabels: prometheus.Labels{"server": server},
 			},
-			[]string{"server"},
 		),
-		uptime: prometheus.NewCounterVec(
+		uptime: prometheus.NewCounter(
 			prometheus.CounterOpts{
-				Name:      "uptime",
-				Namespace: namespace,
-				Help:      "The uptime of the server.",
+				Name:        "uptime",
+				Namespace:   namespace,
+				Help:        "The uptime of the server.",
+				ConstLabels: prometheus.Labels{"server": server},
 			},
-			[]string{"server"},
 		),
 		cache: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
-				Name:      "cache",
-				Namespace: namespace,
-				Help:      "The cache hits/misses broken down by command (get, set, etc.).",
+				Name:        "cache",
+				Namespace:   namespace,
+				Help:        "The cache hits/misses broken down by command (get, set, etc.).",
+				ConstLabels: prometheus.Labels{"server": server},
 			},
-			[]string{"server", "command", "status"},
+			[]string{"command", "status"},
 		),
 		usage: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
-				Name:      "usage",
-				Namespace: namespace,
-				Help:      "Details the resource usage (items/connections) of the server, by time (current/total).",
+				Name:        "usage",
+				Namespace:   namespace,
+				Help:        "Details the resource usage (items/connections) of the server, by time (current/total).",
+				ConstLabels: prometheus.Labels{"server": server},
 			},
-			[]string{"server", "time", "resource"},
+			[]string{"time", "resource"},
 		),
 		bytes: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
-				Name:      "bytes",
-				Namespace: namespace,
-				Help:      "The bytes sent/received by the server.",
+				Name:        "bytes",
+				Namespace:   namespace,
+				Help:        "The bytes sent/received by the server.",
+				ConstLabels: prometheus.Labels{"server": server},
 			},
-			[]string{"server", "direction"},
+			[]string{"direction"},
 		),
 		removals: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
-				Name:      "removal",
-				Namespace: namespace,
-				Help:      "Number of items that have been evicted/expired (status), and if the were fetched ever or not.",
+				Name:        "removal",
+				Namespace:   namespace,
+				Help:        "Number of items that have been evicted/expired (status), and if the were fetched ever or not.",
+				ConstLabels: prometheus.Labels{"server": server},
 			},
-			[]string{"server", "status", "fetched"},
+			[]string{"status", "fetched"},
 		),
 	}
 }
@@ -97,7 +99,9 @@ func NewExporter(mc *memcache.Client) *Exporter {
 // Describe describes all the metrics exported by the memcache exporter. It
 // implements prometheus.Collector.
 func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
-	e.up.Describe(ch)
+	ch <- e.up.Desc()
+	ch <- e.uptime.Desc()
+
 	e.cache.Describe(ch)
 	e.usage.Describe(ch)
 	e.bytes.Describe(ch)
@@ -111,8 +115,6 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 
-	e.up.Reset()
-	e.uptime.Reset()
 	e.cache.Reset()
 	e.usage.Reset()
 	e.bytes.Reset()
@@ -125,23 +127,22 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 
+	e.up.Set(1)
 	for server, _ := range stats {
-		e.up.WithLabelValues(server.String()).Set(1)
-
 		m, err := strconv.ParseUint(stats[server]["uptime"], 10, 64)
 		if err != nil {
-			e.uptime.WithLabelValues(server.String()).Set(0)
+			e.uptime.Set(0)
 		} else {
-			e.uptime.WithLabelValues(server.String()).Set(float64(m))
+			e.uptime.Set(float64(m))
 		}
 
 		for _, op := range cacheOperations {
 			for _, st := range cacheStatuses {
 				m, err := strconv.ParseUint(stats[server][fmt.Sprintf("%s_%s", op, st)], 10, 64)
 				if err != nil {
-					e.cache.WithLabelValues(server.String(), op, st).Set(0)
+					e.cache.WithLabelValues(op, st).Set(0)
 				} else {
-					e.cache.WithLabelValues(server.String(), op, st).Set(float64(m))
+					e.cache.WithLabelValues(op, st).Set(float64(m))
 				}
 			}
 		}
@@ -150,9 +151,9 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			for _, r := range usageResources {
 				m, err := strconv.ParseUint(stats[server][fmt.Sprintf("%s_%s", t, r)], 10, 64)
 				if err != nil {
-					e.usage.WithLabelValues(server.String(), t, r).Set(0)
+					e.usage.WithLabelValues(t, r).Set(0)
 				} else {
-					e.usage.WithLabelValues(server.String(), t, r).Set(float64(m))
+					e.usage.WithLabelValues(t, r).Set(float64(m))
 				}
 			}
 		}
@@ -160,30 +161,30 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		for _, dir := range bytesDirections {
 			m, err := strconv.ParseUint(stats[server][fmt.Sprintf("bytes_%s", dir)], 10, 64)
 			if err != nil {
-				e.bytes.WithLabelValues(server.String(), dir).Set(0)
+				e.bytes.WithLabelValues(dir).Set(0)
 			} else {
-				e.bytes.WithLabelValues(server.String(), dir).Set(float64(m))
+				e.bytes.WithLabelValues(dir).Set(float64(m))
 			}
 		}
 
 		for _, st := range removalsStatuses {
 			m, err := strconv.ParseUint(stats[server][fmt.Sprintf("%s_unfetched", st)], 10, 64)
 			if err != nil {
-				e.removals.WithLabelValues(server.String(), st, "unfetched").Set(0)
+				e.removals.WithLabelValues(st, "unfetched").Set(0)
 			} else {
-				e.removals.WithLabelValues(server.String(), st, "unfetched").Set(float64(m))
+				e.removals.WithLabelValues(st, "unfetched").Set(float64(m))
 			}
 		}
 		m, err = strconv.ParseUint(stats[server]["evicted"], 10, 64)
 		if err != nil {
-			e.removals.WithLabelValues(server.String(), "evicted", "fetched").Set(0)
+			e.removals.WithLabelValues("evicted", "fetched").Set(0)
 		} else {
-			e.removals.WithLabelValues(server.String(), "evicted", "fetched").Set(float64(m))
+			e.removals.WithLabelValues("evicted", "fetched").Set(float64(m))
 		}
 	}
 
-	e.up.Collect(ch)
-	e.uptime.Collect(ch)
+	ch <- e.up
+	ch <- e.uptime
 	e.cache.Collect(ch)
 	e.usage.Collect(ch)
 	e.bytes.Collect(ch)
@@ -197,16 +198,19 @@ func main() {
 	)
 	flag.Parse()
 
-	env := os.Getenv("memcache_servers")
-	if env == "" {
-		glog.Fatalf("No servers specified")
-	}
-
-	mc := memcache.New(strings.Split(env, ",")...)
-	exporter := NewExporter(mc)
+	exporter := NewExporter(flag.Arg(0))
 
 	prometheus.MustRegister(exporter)
 
 	http.Handle(*metricsPath, prometheus.Handler())
-	http.ListenAndServe(*listenAddress, nil)
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`<html>
+             <head><title>Memcached Exporter</title></head>
+             <body>
+             <h1>Memcached Exporter</h1>
+             <p><a href='` + *metricsPath + `'>Metrics</a></p>
+             </body>
+             </html>`))
+	})
+	glog.Fatal(http.ListenAndServe(*listenAddress, nil))
 }

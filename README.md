@@ -4,28 +4,36 @@ A memcached exporter for prometheus.
 
 # Building and Running
 
-The memcache exporter uses an environment variable (`memcache_servers`) to
-determine which servers to connect to. This needs to be a single string of
-comma-separated host:port pairs. Example `host1:port1,host2:port2` will
-monitor two memcache servers at `host1:port` and `host2:port2`.
+The memcache exporter exports metrics from a single memcached server for
+consumption by prometheus. The server is specified as an argument to the
+program.
+
+By default the memcache\_exporter serves on port `9016` at `/metrics`
 
 ```
 make
-memcache_servers=memcache:11211 ./memcache_exporter
+./memcache_exporter memcached:11211
 ```
 
 Alternatively a Dockerfile is supplied
 
 ```
 docker build -t memcache_exporter .
-docker run -e memcache_servers=memcache:11211 memcache_exporter
+docker run memcache_exporter
 ```
 
-By default the memcache\_exporter serves on port `9016` at `/metrics`
+To change the server scraped using the Dockerfile method, simply create your
+own Dockerfile, and overwrite the `CMD` setting. This is also the way to enable
+logging etc.
+
+```
+FROM snapbug/memcached-exporter
+CMD ["yourserver:yourport"]
+```
 
 # Collectors
 
-The exporter collects a number of collections for each server:
+The exporter collects a number of collections from the server:
 
 - `up`: whether the server is up.
 
