@@ -8,7 +8,7 @@ The memcache exporter exports metrics from a single memcached server for
 consumption by prometheus. The server is specified as an argument to the
 program.
 
-By default the memcache\_exporter serves on port `9016` at `/metrics`
+By default the memcache\_exporter serves on port `9106` at `/metrics`
 
 ```
 make
