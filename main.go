@@ -19,7 +19,7 @@ const (
 var (
 	cacheOperations  = []string{"get", "delete", "incr", "decr", "cas", "touch"}
 	cacheStatuses    = []string{"hits", "misses"}
-	usageTimes       = []string{"current", "total"}
+	usageTimes       = []string{"curr", "total"}
 	usageResources   = []string{"items", "connections"}
 	bytesDirections  = []string{"read", "written"}
 	removalsStatuses = []string{"expired", "evicted"}
