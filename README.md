@@ -4,15 +4,15 @@ A memcached exporter for prometheus.
 
 # Building and Running
 
-The memcache exporter exports metrics from a single memcached server for
-consumption by prometheus. The server is specified as an argument to the
+The memcache exporter exports metrics from memcached servers for
+consumption by prometheus. The servers are specified as arguments to the
 program.
 
 By default the memcache\_exporter serves on port `9106` at `/metrics`
 
 ```
 make
-./memcache_exporter memcached:11211
+./memcache_exporter server1:11211 server2:11211 ...
 ```
 
 Alternatively a Dockerfile is supplied
@@ -28,7 +28,7 @@ logging etc.
 
 ```
 FROM snapbug/memcache-exporter
-CMD ["yourserver:yourport"]
+CMD ["yourserver1:yourport1", "yourserver2:yourport2", "etc:etc"]
 ```
 
 # Collectors
