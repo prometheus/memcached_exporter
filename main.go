@@ -196,11 +196,13 @@ func main() {
 		listenAddress = flag.String("web.listen-address", ":9106", "Address to listen on for web interface and telemetry.")
 		metricsPath   = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
 	)
+
 	flag.Parse()
 
-	exporter := NewExporter(flag.Arg(0))
-
-	prometheus.MustRegister(exporter)
+	for _, server := range flag.Args() {
+		exporter := NewExporter(server)
+		prometheus.MustRegister(exporter)
+	}
 
 	http.Handle(*metricsPath, prometheus.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
