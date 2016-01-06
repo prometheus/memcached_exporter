@@ -123,6 +123,8 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	stats, err := e.mc.Stats()
 
 	if err != nil {
+		e.up.Set(0)
+		ch <- e.up
 		glog.Infof("Failed to collect stats from memcache: %s", err)
 		return
 	}
