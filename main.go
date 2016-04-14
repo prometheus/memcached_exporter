@@ -8,8 +8,8 @@ import (
 	"sync"
 
 	"github.com/Snapbug/gomemcache/memcache"
-	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/log"
 )
 
 const (
@@ -17,6 +17,8 @@ const (
 )
 
 var (
+	Version = "0.0.0"
+
 	cacheOperations  = []string{"get", "delete", "incr", "decr", "cas", "touch"}
 	cacheStatuses    = []string{"hits", "misses"}
 	usageTimes       = []string{"curr", "total"}
@@ -125,7 +127,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	if err != nil {
 		e.up.Set(0)
 		ch <- e.up
-		glog.Infof("Failed to collect stats from memcache: %s", err)
+		log.Infof("Failed to collect stats from memcache: %s", err)
 		return
 	}
 
@@ -198,7 +200,6 @@ func main() {
 		listenAddress = flag.String("web.listen-address", ":9106", "Address to listen on for web interface and telemetry.")
 		metricsPath   = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
 	)
-
 	flag.Parse()
 
 	for _, server := range flag.Args() {
@@ -216,5 +217,6 @@ func main() {
              </body>
              </html>`))
 	})
-	glog.Fatal(http.ListenAndServe(*listenAddress, nil))
+	log.Infof("Starting memcache_exporter v%s at %s", Version, *listenAddress)
+	log.Fatal(http.ListenAndServe(*listenAddress, nil))
 }

@@ -13,5 +13,6 @@
 
 VERSION  := 0.1.0
 TARGET   := memcache_exporter
+GOFLAGS  := -ldflags "-X main.Version=$(VERSION)"
 
 include Makefile.COMMON
