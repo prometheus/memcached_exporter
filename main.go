@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -178,7 +179,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(e.commands, prometheus.CounterValue, parse(s, "cmd_flush"), "flush", "hit")
 
 		// memcached includes cas operations again in cmd_set.
-		set := 0.
+		set := math.NaN()
 		if setCmd, err := strconv.ParseFloat(s["cmd_set"], 64); err == nil {
 			if cas, casErr := sum(s, "cas_misses", "cas_hits", "cas_badval"); casErr == nil {
 				set = setCmd - cas
@@ -211,7 +212,7 @@ func parse(stats map[string]string, key string) float64 {
 	v, err := strconv.ParseFloat(stats[key], 64)
 	if err != nil {
 		log.Errorf("Failed to parse %s %q: %s", key, stats[key], err)
-		v = 0
+		v = math.NaN()
 	}
 	return v
 }
@@ -221,7 +222,7 @@ func sum(stats map[string]string, keys ...string) (float64, error) {
 	for _, key := range keys {
 		v, err := strconv.ParseFloat(stats[key], 64)
 		if err != nil {
-			return 0, err
+			return math.NaN(), err
 		}
 		s += v
 	}
