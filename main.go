@@ -2,8 +2,11 @@ package main
 
 import (
 	"flag"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Snapbug/gomemcache/memcache"
@@ -229,12 +232,29 @@ func main() {
 	var (
 		address       = flag.String("memcached.address", "localhost:11211", "Memcached server address.")
 		timeout       = flag.Duration("memcached.timeout", time.Second, "memcached connect timeout.")
+		pidFile       = flag.String("memcached.pid-file", "", "Optional path to a file containing the memcached PID for additional metrics.")
 		listenAddress = flag.String("web.listen-address", ":9106", "Address to listen on for web interface and telemetry.")
 		metricsPath   = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
 	)
 	flag.Parse()
 
 	prometheus.MustRegister(NewExporter(*address, *timeout))
+
+	if *pidFile != "" {
+		procExporter := prometheus.NewProcessCollectorPIDFn(
+			func() (int, error) {
+				content, err := ioutil.ReadFile(*pidFile)
+				if err != nil {
+					return 0, fmt.Errorf("Can't read pid file %q: %s", *pidFile, err)
+				}
+				value, err := strconv.Atoi(strings.TrimSpace(string(content)))
+				if err != nil {
+					return 0, fmt.Errorf("Can't parse pid file %q: %s", *pidFile, err)
+				}
+				return value, nil
+			}, namespace)
+		prometheus.MustRegister(procExporter)
+	}
 
 	http.Handle(*metricsPath, prometheus.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
