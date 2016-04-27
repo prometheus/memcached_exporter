@@ -1,5 +1,7 @@
-FROM golang:1.6-onbuild
-MAINTAINER Matt Crane <mcrane@snapbug.geek.nz>
+FROM        quay.io/prometheus/busybox:latest
+MAINTAINER  The Prometheus Authors <prometheus-developers@googlegroups.com>
 
-ENTRYPOINT [ "go-wrapper", "run" ]
-EXPOSE 9106
+COPY memcached_exporter /bin/memcached_exporter
+
+ENTRYPOINT ["/bin/memcached_exporter"]
+EXPOSE     9106
