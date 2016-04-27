@@ -19,7 +19,7 @@ var (
 	Version = "0.0.0"
 )
 
-// Exporter collects metrics from a set of memcached servers.
+// Exporter collects metrics from a memcached server.
 type Exporter struct {
 	mc *memcache.Client
 
@@ -39,7 +39,7 @@ type Exporter struct {
 	reclaimed        *prometheus.Desc
 }
 
-// NewExporter returns an initialized exporter
+// NewExporter returns an initialized exporter.
 func NewExporter(server string, timeout time.Duration) *Exporter {
 	c := memcache.New(server)
 	c.Timeout = timeout
@@ -50,85 +50,85 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 			prometheus.BuildFQName(namespace, "", "up"),
 			"Could the memcached server be reached.",
 			nil,
-			prometheus.Labels{"server": server},
+			nil,
 		),
 		uptime: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "uptime"),
 			"The uptime of the server.",
 			nil,
-			prometheus.Labels{"server": server},
+			nil,
 		),
 		version: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "version"),
 			"The version of this memcached server.",
 			[]string{"version"},
-			prometheus.Labels{"server": server},
+			nil,
 		),
 		bytesRead: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "read_bytes_total"),
 			"Total number of bytes read by this server from network.",
 			nil,
-			prometheus.Labels{"server": server},
+			nil,
 		),
 		bytesWritten: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "written_bytes_total"),
 			"Total number of bytes sent by this server to network.",
 			nil,
-			prometheus.Labels{"server": server},
+			nil,
 		),
 		connections: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "current_connections"),
 			"Current number of open connections.",
 			nil,
-			prometheus.Labels{"server": server},
+			nil,
 		),
 		connectionsTotal: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "connections_total"),
 			"Total number of connections opened since the server started running.",
 			nil,
-			prometheus.Labels{"server": server},
+			nil,
 		),
 		currentBytes: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "current_bytes"),
 			"Current number of bytes used to store items.",
 			nil,
-			prometheus.Labels{"server": server},
+			nil,
 		),
 		limitBytes: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "limit_bytes"),
 			"Number of bytes this server is allowed to use for storage.",
 			nil,
-			prometheus.Labels{"server": server},
+			nil,
 		),
 		commands: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "commands_total"),
 			"The cache hits/misses asdf broken down by command (get, set, etc.).",
 			[]string{"command", "status"},
-			prometheus.Labels{"server": server},
+			nil,
 		),
 		items: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "current_items"),
 			"Current number of items stored by this instance.",
 			nil,
-			prometheus.Labels{"server": server},
+			nil,
 		),
 		itemsTotal: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "items_total"),
 			"Total number of items stored during the life of this instance.",
 			nil,
-			prometheus.Labels{"server": server},
+			nil,
 		),
 		evictions: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "items_evicted_total"),
 			"Number of valid items removed from cache to free memory for new items.",
 			nil,
-			prometheus.Labels{"server": server},
+			nil,
 		),
 		reclaimed: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "items_reclaimed_total"),
 			"Number of times an entry was stored using memory from an expired entry.",
 			nil,
-			prometheus.Labels{"server": server},
+			nil,
 		),
 	}
 }
@@ -152,8 +152,8 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.reclaimed
 }
 
-// Collect fetches the statistics from the configured memcached servers, and
-// delivers them as prometheus metrics. It implements prometheus.Collector.
+// Collect fetches the statistics from the configured memcached server, and
+// delivers them as Prometheus metrics. It implements prometheus.Collector.
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	stats, err := e.mc.Stats()
 	if err != nil {
@@ -227,19 +227,14 @@ func sum(stats map[string]string, keys ...string) (float64, error) {
 
 func main() {
 	var (
+		address       = flag.String("memcached.address", "localhost:11211", "Memcached server address.")
 		timeout       = flag.Duration("memcached.timeout", time.Second, "memcached connect timeout.")
 		listenAddress = flag.String("web.listen-address", ":9106", "Address to listen on for web interface and telemetry.")
 		metricsPath   = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
 	)
 	flag.Parse()
 
-	servers := flag.Args()
-	if len(servers) == 0 {
-		servers = []string{"localhost:11211"}
-	}
-	for _, s := range servers {
-		prometheus.MustRegister(NewExporter(s, *timeout))
-	}
+	prometheus.MustRegister(NewExporter(*address, *timeout))
 
 	http.Handle(*metricsPath, prometheus.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
