@@ -56,8 +56,8 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 			nil,
 		),
 		uptime: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "uptime"),
-			"The uptime of the server.",
+			prometheus.BuildFQName(namespace, "", "uptime_seconds"),
+			"Number of seconds since the server started.",
 			nil,
 			nil,
 		),
@@ -105,7 +105,7 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 		),
 		commands: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "commands_total"),
-			"The cache hits/misses asdf broken down by command (get, set, etc.).",
+			"Total number of all requests broken down by command (get, set, etc.) and status.",
 			[]string{"command", "status"},
 			nil,
 		),

@@ -1,4 +1,4 @@
 .build
-memcache_exporter
+memcached_exporter
 *.tar.gz
 *-stamp
