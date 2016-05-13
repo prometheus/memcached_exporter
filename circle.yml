@@ -32,7 +32,8 @@ dependencies:
 
 test:
   override:
-    - docker run --rm -t -v "$(pwd):/app" "${DOCKER_TEST_IMAGE_NAME}" -i "${REPO_PATH}" -T
+    - docker run -d --name memcached memcached
+    - docker run --rm --link memcached:memcached -t -v "$(pwd):/app" "${DOCKER_TEST_IMAGE_NAME}" -i "${REPO_PATH}" -T
 
 deployment:
   hub_branch:
