@@ -1,4 +1,5 @@
-.build
+/.build
+/.release
+/.tarballs
 memcached_exporter
 *.tar.gz
-*-stamp
