@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"os/exec"
+	"strings"
 	"testing"
 	"time"
 
@@ -14,21 +16,13 @@ import (
 func TestAcceptance(t *testing.T) {
 	done := false
 
-	// TODO(ts): Select unused port.
-	server := exec.Command("memcached")
-	go func() {
-		if err := server.Run(); err != nil && !done {
-			t.Fatal(err)
-		}
-	}()
-	defer func() {
-		if server.Process != nil {
-			server.Process.Kill()
-		}
-	}()
+	addr := "localhost:11211"
+	// MEMCACHED_PORT might be set by a linked memcached docker container.
+	if env := os.Getenv("MEMCACHED_PORT"); env != "" {
+		addr = strings.TrimLeft(env, "tcp://")
+	}
 
-	// TODO(ts): Select unused port and set memcached port.
-	exporter := exec.Command("./memcached_exporter")
+	exporter := exec.Command("./memcached_exporter", "-memcached.address", addr)
 	go func() {
 		if err := exporter.Run(); err != nil && !done {
 			t.Fatal(err)
@@ -45,9 +39,10 @@ func TestAcceptance(t *testing.T) {
 	}()
 
 	// TODO(ts): Replace sleep with ready check loop.
-	<-time.After(100 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
-	client := memcache.New("localhost:11211")
+	client := memcache.New(addr)
+	// TODO(ts): reset stats first.
 	item := &memcache.Item{Key: "foo", Value: []byte("bar")}
 	if err := client.Set(item); err != nil {
 		t.Fatal(err)

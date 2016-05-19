@@ -1,6 +1,9 @@
-# Memcached Exporter for Prometheus
+# Memcached Exporter for Prometheus [![Build Status][buildstatus]][circleci]
 
-A memcached exporter for prometheus.
+[![Docker Repository on Quay](https://quay.io/repository/prometheus/memcached-exporter/status)][quay]
+[![Docker Pulls](https://img.shields.io/docker/pulls/prom/memcached-exporter.svg?maxAge=604800)][hub]
+
+A [memcached](https://memcached.org/) exporter for prometheus.
 
 ## Building
 
@@ -76,3 +79,8 @@ memcached process, then the following metrics will be exported additionally.
 # HELP memcached_process_virtual_memory_bytes Virtual memory size in bytes.
 # TYPE memcached_process_virtual_memory_bytes gauge
 ```
+
+[buildstatus]: https://circleci.com/gh/prometheus/memcached_exporter/tree/master.svg?style=shield
+[circleci]: https://circleci.com/gh/prometheus/memcached_exporter
+[hub]: https://hub.docker.com/r/prom/node-exporter/
+[quay]: https://quay.io/repository/prometheus/node-exporter
