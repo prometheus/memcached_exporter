@@ -234,7 +234,7 @@ func main() {
 		address       = flag.String("memcached.address", "localhost:11211", "Memcached server address.")
 		timeout       = flag.Duration("memcached.timeout", time.Second, "memcached connect timeout.")
 		pidFile       = flag.String("memcached.pid-file", "", "Optional path to a file containing the memcached PID for additional metrics.")
-		listenAddress = flag.String("web.listen-address", ":9106", "Address to listen on for web interface and telemetry.")
+		listenAddress = flag.String("web.listen-address", ":9150", "Address to listen on for web interface and telemetry.")
 		metricsPath   = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
 	)
 	flag.Parse()

@@ -65,7 +65,7 @@ func TestAcceptance(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	resp, err := http.Get("http://localhost:9106/metrics")
+	resp, err := http.Get("http://localhost:9150/metrics")
 	if err != nil {
 		t.Fatal(err)
 	}

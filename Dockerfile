@@ -4,4 +4,4 @@ MAINTAINER  The Prometheus Authors <prometheus-developers@googlegroups.com>
 COPY memcached_exporter /bin/memcached_exporter
 
 ENTRYPOINT ["/bin/memcached_exporter"]
-EXPOSE     9106
+EXPOSE     9150

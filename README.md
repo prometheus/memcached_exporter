@@ -11,7 +11,7 @@ The memcached exporter exports metrics from a memcached server for
 consumption by prometheus. The server is specified as `-memcached.address` flag
 to the program (default is `localhost:11211`).
 
-By default the memcache\_exporter serves on port `0.0.0.0:9106` at `/metrics`
+By default the memcache\_exporter serves on port `0.0.0.0:9150` at `/metrics`
 
 ```
 make
