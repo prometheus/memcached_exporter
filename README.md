@@ -82,5 +82,5 @@ memcached process, then the following metrics will be exported additionally.
 
 [buildstatus]: https://circleci.com/gh/prometheus/memcached_exporter/tree/master.svg?style=shield
 [circleci]: https://circleci.com/gh/prometheus/memcached_exporter
-[hub]: https://hub.docker.com/r/prom/node-exporter/
-[quay]: https://quay.io/repository/prometheus/node-exporter
+[hub]: https://hub.docker.com/r/prom/memcached-exporter/
+[quay]: https://quay.io/repository/prometheus/memcached-exporter
