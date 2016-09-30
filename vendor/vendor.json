@@ -8,9 +8,10 @@
 			"revisionTime": "2016-02-24T16:10:30-05:00"
 		},
 		{
+			"checksumSHA1": "HYhRxF8+OtEDdh4i/4WYenm/a5A=",
 			"path": "github.com/Snapbug/gomemcache/memcache",
-			"revision": "4b31ef35b5d775c9bfc986bc4e87acbbbc68ee17",
-			"revisionTime": "2015-03-20T16:22:03+13:00"
+			"revision": "704599bd0d0562c86246415c7bf94960afca9efd",
+			"revisionTime": "2016-04-21T19:29:32Z"
 		},
 		{
 			"path": "github.com/beorn7/perks/quantile",
@@ -67,5 +68,6 @@
 			"revision": "19ced1583f732e8ff9d7d84de773dc621557df99",
 			"revisionTime": "2015-11-16T22:15:20-05:00"
 		}
-	]
+	],
+	"rootPath": "memcached_exporter"
 }
