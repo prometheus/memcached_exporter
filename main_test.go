@@ -64,6 +64,10 @@ func TestAcceptance(t *testing.T) {
 	if err := client.CompareAndSwap(last); err != nil {
 		t.Fatal(err)
 	}
+	large := &memcache.Item{Key: "large", Value: []byte("Hello World this text should be 128 bytes in size so that we may test the slab functionality of memcached. Filler text here to  ")}
+	if err := client.Set(large); err != nil {
+		t.Fatal(err)
+	}
 
 	resp, err := http.Get("http://localhost:9150/metrics")
 	if err != nil {
@@ -80,12 +84,16 @@ func TestAcceptance(t *testing.T) {
 		`memcached_up 1`,
 		`memcached_commands_total{command="get",status="hit"} 2`,
 		`memcached_commands_total{command="get",status="miss"} 1`,
-		`memcached_commands_total{command="set",status="hit"} 2`,
+		`memcached_commands_total{command="set",status="hit"} 3`,
 		`memcached_commands_total{command="cas",status="hit"} 1`,
-		`memcached_current_bytes 74`,
+		`memcached_current_bytes 274`,
 		`memcached_current_connections 11`,
-		`memcached_current_items 1`,
-		`memcached_items_total 3`,
+		`memcached_current_items 2`,
+		`memcached_items_total 4`,
+		`memcached_active_slabs_total 2`,
+		`memcached_items_number_total{slab="1"} 1`,
+		`memcached_slabs_commands_total{command="set",slab="1",status="hit"} 2`,
+		`memcached_slabs_commands_total{command="cas",slab="1",status="hit"} 1`,
 	}
 	for _, test := range tests {
 		if !bytes.Contains(body, []byte(test)) {
