@@ -27,20 +27,41 @@ var (
 type Exporter struct {
 	mc *memcache.Client
 
-	up               *prometheus.Desc
-	uptime           *prometheus.Desc
-	version          *prometheus.Desc
-	bytesRead        *prometheus.Desc
-	bytesWritten     *prometheus.Desc
-	connections      *prometheus.Desc
-	connectionsTotal *prometheus.Desc
-	currentBytes     *prometheus.Desc
-	limitBytes       *prometheus.Desc
-	commands         *prometheus.Desc
-	items            *prometheus.Desc
-	itemsTotal       *prometheus.Desc
-	evictions        *prometheus.Desc
-	reclaimed        *prometheus.Desc
+	up                    *prometheus.Desc
+	uptime                *prometheus.Desc
+	version               *prometheus.Desc
+	bytesRead             *prometheus.Desc
+	bytesWritten          *prometheus.Desc
+	connections           *prometheus.Desc
+	connectionsTotal      *prometheus.Desc
+	currentBytes          *prometheus.Desc
+	limitBytes            *prometheus.Desc
+	commands              *prometheus.Desc
+	items                 *prometheus.Desc
+	itemsTotal            *prometheus.Desc
+	evictions             *prometheus.Desc
+	reclaimed             *prometheus.Desc
+	malloced              *prometheus.Desc
+	itemsNumber           *prometheus.Desc
+	itemsAge              *prometheus.Desc
+	itemsCrawlerReclaimed *prometheus.Desc
+	itemsEvicted          *prometheus.Desc
+	itemsEvictedNonzero   *prometheus.Desc
+	itemsEvictedTime      *prometheus.Desc
+	itemsEvictedUnfetched *prometheus.Desc
+	itemsExpiredUnfetched *prometheus.Desc
+	itemsOutofmemory      *prometheus.Desc
+	itemsReclaimed        *prometheus.Desc
+	itemsTailrepairs      *prometheus.Desc
+	slabsChunkSize        *prometheus.Desc
+	slabsChunksPerPage    *prometheus.Desc
+	slabsCurrentPages     *prometheus.Desc
+	slabsCurrentChunks    *prometheus.Desc
+	slabsChunksUsed       *prometheus.Desc
+	slabsChunksFree       *prometheus.Desc
+	slabsChunksFreeEnd    *prometheus.Desc
+	slabsMemRequested     *prometheus.Desc
+	slabsCommands         *prometheus.Desc
 }
 
 // NewExporter returns an initialized exporter.
@@ -124,14 +145,140 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 		),
 		evictions: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "items_evicted_total"),
-			"Number of valid items removed from cache to free memory for new items.",
+			"Total number of valid items removed from cache to free memory for new items.",
 			nil,
 			nil,
 		),
 		reclaimed: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "items_reclaimed_total"),
-			"Number of times an entry was stored using memory from an expired entry.",
+			"Total number of times an entry was stored using memory from an expired entry.",
 			nil,
+			nil,
+		),
+		malloced: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "malloced_bytes"),
+			"Number of bytes of memory allocated to slab pages.",
+			nil,
+			nil,
+		),
+		itemsNumber: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "slab", "current_items"),
+			"Number of items currently stored in this slab class.",
+			[]string{"slab"},
+			nil,
+		),
+		itemsAge: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "slab", "items_age_seconds"),
+			"Number of seconds the oldest item has been in the slab class.",
+			[]string{"slab"},
+			nil,
+		),
+		itemsCrawlerReclaimed: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "slab", "items_crawler_reclaimed_total"),
+			"Total number of items freed by the LRU Crawler.",
+			[]string{"slab"},
+			nil,
+		),
+		itemsEvicted: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "slab", "items_evicted_total"),
+			"Total number of times an item had to be evicted from the LRU before it expired.",
+			[]string{"slab"},
+			nil,
+		),
+		itemsEvictedNonzero: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "slab", "items_evicted_nonzero_total"),
+			"Total number of times an item which had an explicit expire time set had to be evicted from the LRU before it expired.",
+			[]string{"slab"},
+			nil,
+		),
+		itemsEvictedTime: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "slab", "items_evicted_time_seconds"),
+			"Seconds since the last access for the most recent item evicted from this class.",
+			[]string{"slab"},
+			nil,
+		),
+		itemsEvictedUnfetched: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "slab", "items_evicted_unfetched_total"),
+			"Total nmber of items evicted and never fetched.",
+			[]string{"slab"},
+			nil,
+		),
+		itemsExpiredUnfetched: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "slab", "items_expired_unfetched_total"),
+			"Total number of valid items evicted from the LRU which were never touched after being set.",
+			[]string{"slab"},
+			nil,
+		),
+		itemsOutofmemory: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "slab", "items_outofmemory_total"),
+			"Total number of items for this slab class that have triggered an out of memory error.",
+			[]string{"slab"},
+			nil,
+		),
+		itemsReclaimed: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "slab", "items_reclaimed_total"),
+			"Total number of items reclaimed.",
+			[]string{"slab"},
+			nil,
+		),
+		itemsTailrepairs: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "slab", "items_tailrepairs_total"),
+			"Total number of times the entries for a particular ID need repairing.",
+			[]string{"slab"},
+			nil,
+		),
+		slabsChunkSize: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "slab", "chunk_size_bytes"),
+			"Number of bytes allocated to each chunk within this slab class.",
+			[]string{"slab"},
+			nil,
+		),
+		slabsChunksPerPage: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "slab", "chunks_per_page"),
+			"Number of chunks within a single page for this slab class.",
+			[]string{"slab"},
+			nil,
+		),
+		slabsCurrentPages: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "slab", "current_pages"),
+			"Number of pages allocated to this slab class.",
+			[]string{"slab"},
+			nil,
+		),
+		slabsCurrentChunks: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "slab", "current_chunks"),
+			"Number of chunks allocated to this slab class.",
+			[]string{"slab"},
+			nil,
+		),
+		slabsChunksUsed: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "slab", "chunks_used"),
+			"Number of chunks allocated to an item.",
+			[]string{"slab"},
+			nil,
+		),
+		slabsChunksFree: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "slab", "chunks_free"),
+			"Number of chunks not yet allocated items.",
+			[]string{"slab"},
+			nil,
+		),
+		slabsChunksFreeEnd: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "slab", "chunks_free_end"),
+			"Number of free chunks at the end of the last allocated page.",
+			[]string{"slab"},
+			nil,
+		),
+		slabsMemRequested: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "slab", "mem_requested_bytes"),
+			"Number of bytes of memory actual items take up within a slab.",
+			[]string{"slab"},
+			nil,
+		),
+		slabsCommands: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "slab", "commands_total"),
+			"Total number of all requests broken down by command (get, set, etc.) and status per slab.",
+			[]string{"slab", "command", "status"},
 			nil,
 		),
 	}
@@ -154,6 +301,28 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.itemsTotal
 	ch <- e.evictions
 	ch <- e.reclaimed
+	ch <- e.malloced
+	ch <- e.itemsNumber
+	ch <- e.itemsAge
+	ch <- e.itemsCrawlerReclaimed
+	ch <- e.itemsEvicted
+	ch <- e.itemsEvictedNonzero
+	ch <- e.itemsEvictedTime
+	ch <- e.itemsEvictedUnfetched
+	ch <- e.itemsExpiredUnfetched
+	ch <- e.itemsOutofmemory
+	ch <- e.itemsReclaimed
+	ch <- e.itemsTailrepairs
+	ch <- e.itemsExpiredUnfetched
+	ch <- e.slabsChunkSize
+	ch <- e.slabsChunksPerPage
+	ch <- e.slabsCurrentPages
+	ch <- e.slabsCurrentChunks
+	ch <- e.slabsChunksUsed
+	ch <- e.slabsChunksFree
+	ch <- e.slabsChunksFreeEnd
+	ch <- e.slabsMemRequested
+	ch <- e.slabsCommands
 }
 
 // Collect fetches the statistics from the configured memcached server, and
@@ -167,7 +336,8 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	}
 	ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 1)
 
-	for _, s := range stats {
+	for _, t := range stats {
+		s := t.Stats
 		ch <- prometheus.MustNewConstMetric(e.uptime, prometheus.CounterValue, parse(s, "uptime"))
 		ch <- prometheus.MustNewConstMetric(e.version, prometheus.GaugeValue, 1, s["version"])
 
@@ -204,6 +374,54 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 		ch <- prometheus.MustNewConstMetric(e.evictions, prometheus.CounterValue, parse(s, "evictions"))
 		ch <- prometheus.MustNewConstMetric(e.reclaimed, prometheus.CounterValue, parse(s, "reclaimed"))
+
+		ch <- prometheus.MustNewConstMetric(e.malloced, prometheus.GaugeValue, parse(s, "total_malloced"))
+
+		for slab, u := range t.Items {
+			slab := strconv.Itoa(slab)
+			ch <- prometheus.MustNewConstMetric(e.itemsNumber, prometheus.GaugeValue, parse(u, "number"), slab)
+			ch <- prometheus.MustNewConstMetric(e.itemsAge, prometheus.CounterValue, parse(u, "age"), slab)
+			ch <- prometheus.MustNewConstMetric(e.itemsCrawlerReclaimed, prometheus.CounterValue, parse(u, "crawler_reclaimed"), slab)
+			ch <- prometheus.MustNewConstMetric(e.itemsEvicted, prometheus.CounterValue, parse(u, "evicted"), slab)
+			ch <- prometheus.MustNewConstMetric(e.itemsEvictedNonzero, prometheus.CounterValue, parse(u, "evicted_nonzero"), slab)
+			ch <- prometheus.MustNewConstMetric(e.itemsEvictedTime, prometheus.CounterValue, parse(u, "evicted_time"), slab)
+			ch <- prometheus.MustNewConstMetric(e.itemsEvictedUnfetched, prometheus.CounterValue, parse(u, "evicted_unfetched"), slab)
+			ch <- prometheus.MustNewConstMetric(e.itemsExpiredUnfetched, prometheus.CounterValue, parse(u, "expired_unfetched"), slab)
+			ch <- prometheus.MustNewConstMetric(e.itemsOutofmemory, prometheus.CounterValue, parse(u, "outofmemory"), slab)
+			ch <- prometheus.MustNewConstMetric(e.itemsReclaimed, prometheus.CounterValue, parse(u, "reclaimed"), slab)
+			ch <- prometheus.MustNewConstMetric(e.itemsTailrepairs, prometheus.CounterValue, parse(u, "tailrepairs"), slab)
+		}
+
+		for slab, v := range t.Slabs {
+			slab := strconv.Itoa(slab)
+
+			for _, op := range []string{"get", "delete", "incr", "decr", "cas", "touch"} {
+				ch <- prometheus.MustNewConstMetric(e.slabsCommands, prometheus.CounterValue, parse(v, op+"_hits"), slab, op, "hit")
+			}
+			ch <- prometheus.MustNewConstMetric(e.slabsCommands, prometheus.CounterValue, parse(v, "cas_badval"), slab, "cas", "badval")
+
+			slabSet := math.NaN()
+			if slabSetCmd, err := strconv.ParseFloat(v["cmd_set"], 64); err == nil {
+				if slabCas, slabCasErr := sum(v, "cas_hits", "cas_badval"); slabCasErr == nil {
+					slabSet = slabSetCmd - slabCas
+				} else {
+					log.Errorf("Failed to parse cas: %s", slabCasErr)
+				}
+			} else {
+				log.Errorf("Failed to parse set %q: %s", v["cmd_set"], err)
+			}
+			ch <- prometheus.MustNewConstMetric(e.slabsCommands, prometheus.CounterValue, slabSet, slab, "set", "hit")
+
+			ch <- prometheus.MustNewConstMetric(e.slabsChunkSize, prometheus.GaugeValue, parse(v, "chunk_size"), slab)
+			ch <- prometheus.MustNewConstMetric(e.slabsChunksPerPage, prometheus.GaugeValue, parse(v, "chunks_per_page"), slab)
+			ch <- prometheus.MustNewConstMetric(e.slabsCurrentPages, prometheus.GaugeValue, parse(v, "total_pages"), slab)
+			ch <- prometheus.MustNewConstMetric(e.slabsCurrentChunks, prometheus.GaugeValue, parse(v, "total_chunks"), slab)
+			ch <- prometheus.MustNewConstMetric(e.slabsChunksUsed, prometheus.GaugeValue, parse(v, "used_chunks"), slab)
+			ch <- prometheus.MustNewConstMetric(e.slabsChunksFree, prometheus.GaugeValue, parse(v, "free_chunks"), slab)
+			ch <- prometheus.MustNewConstMetric(e.slabsChunksFreeEnd, prometheus.GaugeValue, parse(v, "free_chunks_end"), slab)
+			ch <- prometheus.MustNewConstMetric(e.slabsMemRequested, prometheus.GaugeValue, parse(v, "mem_requested"), slab)
+		}
+
 	}
 
 }
