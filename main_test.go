@@ -90,10 +90,9 @@ func TestAcceptance(t *testing.T) {
 		`memcached_current_connections 11`,
 		`memcached_current_items 2`,
 		`memcached_items_total 4`,
-		`memcached_active_slabs_total 2`,
-		`memcached_items_number_total{slab="1"} 1`,
-		`memcached_slabs_commands_total{command="set",slab="1",status="hit"} 2`,
-		`memcached_slabs_commands_total{command="cas",slab="1",status="hit"} 1`,
+		`memcached_slab_items_number{slab="1"} 1`,
+		`memcached_slab_commands_total{command="set",slab="1",status="hit"} 2`,
+		`memcached_slab_commands_total{command="cas",slab="1",status="hit"} 1`,
 	}
 	for _, test := range tests {
 		if !bytes.Contains(body, []byte(test)) {
