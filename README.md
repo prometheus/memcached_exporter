@@ -66,22 +66,28 @@ The exporter collects a number of statistics from the server:
 # TYPE memcached_slab_chunks_used gauge
 # HELP memcached_slab_commands_total Total number of all requests broken down by command (get, set, etc.) and status per slab.
 # TYPE memcached_slab_commands_total counter
+# HELP memcached_slab_current_items Number of items currently stored in this slab class.
+# TYPE memcached_slab_current_items gauge
 # HELP memcached_slab_items_age_seconds Number of seconds the oldest item has been in the slab class.
-# TYPE memcached_slab_items_age_seconds gauge
-# HELP memcached_slab_items_evicted Number of times an item had to be evicted from the LRU before it expired.
-# TYPE memcached_slab_items_evicted gauge
-# HELP memcached_slab_items_evicted_unfetched Number of items evicted and never fetched.
-# TYPE memcached_slab_items_evicted_unfetched gauge
-# HELP memcached_slab_items_expired_unfetched Number of items expired and never fetched.
-# TYPE memcached_slab_items_expired_unfetched gauge
-# HELP memcached_slab_items_number Number of items currently stored in this slab class.
-# TYPE memcached_slab_items_number gauge
-# HELP memcached_slab_items_outofmemory Number of items for this slab class that have triggered an out of memory error.
-# TYPE memcached_slab_items_outofmemory gauge
-# HELP memcached_slab_items_reclaimed Number of items reclaimed.
-# TYPE memcached_slab_items_reclaimed gauge
-# HELP memcached_slab_items_tailrepairs Number of times the entries for a particular ID need repairing.
-# TYPE memcached_slab_items_tailrepairs gauge
+# TYPE memcached_slab_items_age_seconds counter
+# HELP memcached_slab_items_crawler_reclaimed_total Total number of items freed by the LRU Crawler.
+# TYPE memcached_slab_items_crawler_reclaimed_total counter
+# HELP memcached_slab_items_evicted_nonzero_total Total number of times an item which had an explicit expire time set had to be evicted from the LRU before it expired.
+# TYPE memcached_slab_items_evicted_nonzero_total counter
+# HELP memcached_slab_items_evicted_time_seconds Seconds since the last access for the most recent item evicted from this class.
+# TYPE memcached_slab_items_evicted_time_seconds counter
+# HELP memcached_slab_items_evicted_total Total number of times an item had to be evicted from the LRU before it expired.
+# TYPE memcached_slab_items_evicted_total counter
+# HELP memcached_slab_items_evicted_unfetched_total Total nmber of items evicted and never fetched.
+# TYPE memcached_slab_items_evicted_unfetched_total counter
+# HELP memcached_slab_items_expired_unfetched_total Total number of valid items evicted from the LRU which were never touched after being set.
+# TYPE memcached_slab_items_expired_unfetched_total counter
+# HELP memcached_slab_items_outofmemory_total Total number of items for this slab class that have triggered an out of memory error.
+# TYPE memcached_slab_items_outofmemory_total counter
+# HELP memcached_slab_items_reclaimed_total Total number of items reclaimed.
+# TYPE memcached_slab_items_reclaimed_total counter
+# HELP memcached_slab_items_tailrepairs_total Total number of times the entries for a particular ID need repairing.
+# TYPE memcached_slab_items_tailrepairs_total counter
 # HELP memcached_slab_mem_requested_bytes Number of bytes of memory actual items take up within a slab.
 # TYPE memcached_slab_mem_requested_bytes gauge
 # HELP memcached_slab_pages_total Total number of pages allocated to this slab class.
