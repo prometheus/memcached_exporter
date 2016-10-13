@@ -402,10 +402,10 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 			slabSet := math.NaN()
 			if slabSetCmd, err := strconv.ParseFloat(v["cmd_set"], 64); err == nil {
-				if cas, casErr := sum(s, "cas_misses", "cas_hits", "cas_badval"); casErr == nil {
-					slabSet = slabSetCmd - cas
+				if slabCas, slabCasErr := sum(v, "cas_hits", "cas_badval"); slabCasErr == nil {
+					slabSet = slabSetCmd - slabCas
 				} else {
-					log.Errorf("Failed to parse cas: %s", casErr)
+					log.Errorf("Failed to parse cas: %s", slabCasErr)
 				}
 			} else {
 				log.Errorf("Failed to parse set %q: %s", v["cmd_set"], err)
