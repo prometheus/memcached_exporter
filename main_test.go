@@ -42,7 +42,10 @@ func TestAcceptance(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	client := memcache.New(addr)
-	// TODO(ts): reset stats first.
+	if err := client.StatsReset(); err != nil {
+		t.Fatal(err)
+	}
+
 	item := &memcache.Item{Key: "foo", Value: []byte("bar")}
 	if err := client.Set(item); err != nil {
 		t.Fatal(err)

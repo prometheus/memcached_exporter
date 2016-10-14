@@ -9,10 +9,10 @@
 			"revisionTime": "2016-08-29T20:23:21Z"
 		},
 		{
-			"checksumSHA1": "HYhRxF8+OtEDdh4i/4WYenm/a5A=",
+			"checksumSHA1": "dHY13LSchqw93sfALKHFPwFb/tk=",
 			"path": "github.com/Snapbug/gomemcache/memcache",
-			"revision": "704599bd0d0562c86246415c7bf94960afca9efd",
-			"revisionTime": "2016-04-21T19:29:32Z"
+			"revision": "17c49ba473f3c469871d87919da60cf48076da27",
+			"revisionTime": "2016-10-14T16:10:34Z"
 		},
 		{
 			"checksumSHA1": "spyv5/YFBjYyZLZa1U2LBfDR8PM=",
