@@ -22,7 +22,7 @@ DOCKER_IMAGE_TAG        ?= $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
 
 all: format build test
 
-test:
+test: build
 	@echo ">> running tests"
 	@$(GO) test -short $(pkgs)
 

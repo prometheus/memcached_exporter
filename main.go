@@ -334,6 +334,19 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	}
 	ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 1)
 
+	// TODO(ts): Clean up and consolidate metric mappings.
+	itemsMetrics := map[string]*prometheus.Desc{
+		"crawler_reclaimed": e.itemsCrawlerReclaimed,
+		"evicted":           e.itemsEvicted,
+		"evicted_nonzero":   e.itemsEvictedNonzero,
+		"evicted_time":      e.itemsEvictedTime,
+		"evicted_unfetched": e.itemsEvictedUnfetched,
+		"expired_unfetched": e.itemsExpiredUnfetched,
+		"outofmemory":       e.itemsOutofmemory,
+		"reclaimed":         e.itemsReclaimed,
+		"tailrepairs":       e.itemsTailrepairs,
+	}
+
 	for _, t := range stats {
 		s := t.Stats
 		ch <- prometheus.MustNewConstMetric(e.uptime, prometheus.CounterValue, parse(s, "uptime"))
@@ -378,16 +391,13 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		for slab, u := range t.Items {
 			slab := strconv.Itoa(slab)
 			ch <- prometheus.MustNewConstMetric(e.itemsNumber, prometheus.GaugeValue, parse(u, "number"), slab)
-			ch <- prometheus.MustNewConstMetric(e.itemsAge, prometheus.CounterValue, parse(u, "age"), slab)
-			ch <- prometheus.MustNewConstMetric(e.itemsCrawlerReclaimed, prometheus.CounterValue, parse(u, "crawler_reclaimed"), slab)
-			ch <- prometheus.MustNewConstMetric(e.itemsEvicted, prometheus.CounterValue, parse(u, "evicted"), slab)
-			ch <- prometheus.MustNewConstMetric(e.itemsEvictedNonzero, prometheus.CounterValue, parse(u, "evicted_nonzero"), slab)
-			ch <- prometheus.MustNewConstMetric(e.itemsEvictedTime, prometheus.CounterValue, parse(u, "evicted_time"), slab)
-			ch <- prometheus.MustNewConstMetric(e.itemsEvictedUnfetched, prometheus.CounterValue, parse(u, "evicted_unfetched"), slab)
-			ch <- prometheus.MustNewConstMetric(e.itemsExpiredUnfetched, prometheus.CounterValue, parse(u, "expired_unfetched"), slab)
-			ch <- prometheus.MustNewConstMetric(e.itemsOutofmemory, prometheus.CounterValue, parse(u, "outofmemory"), slab)
-			ch <- prometheus.MustNewConstMetric(e.itemsReclaimed, prometheus.CounterValue, parse(u, "reclaimed"), slab)
-			ch <- prometheus.MustNewConstMetric(e.itemsTailrepairs, prometheus.CounterValue, parse(u, "tailrepairs"), slab)
+			ch <- prometheus.MustNewConstMetric(e.itemsAge, prometheus.GaugeValue, parse(u, "age"), slab)
+			for m, d := range itemsMetrics {
+				if _, ok := u[m]; !ok {
+					continue
+				}
+				ch <- prometheus.MustNewConstMetric(d, prometheus.CounterValue, parse(u, m), slab)
+			}
 		}
 
 		for slab, v := range t.Slabs {
