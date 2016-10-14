@@ -71,7 +71,7 @@ The exporter collects a number of statistics from the server:
 # HELP memcached_slab_current_pages Number of pages allocated to this slab class.
 # TYPE memcached_slab_current_pages gauge
 # HELP memcached_slab_items_age_seconds Number of seconds the oldest item has been in the slab class.
-# TYPE memcached_slab_items_age_seconds counter
+# TYPE memcached_slab_items_age_seconds gauge
 # HELP memcached_slab_items_crawler_reclaimed_total Total number of items freed by the LRU Crawler.
 # TYPE memcached_slab_items_crawler_reclaimed_total counter
 # HELP memcached_slab_items_evicted_nonzero_total Total number of times an item which had an explicit expire time set had to be evicted from the LRU before it expired.
