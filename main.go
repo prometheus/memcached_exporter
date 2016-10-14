@@ -55,8 +55,8 @@ type Exporter struct {
 	itemsTailrepairs      *prometheus.Desc
 	slabsChunkSize        *prometheus.Desc
 	slabsChunksPerPage    *prometheus.Desc
-	slabsPagesTotal       *prometheus.Desc
-	slabsChunksTotal      *prometheus.Desc
+	slabsCurrentPages     *prometheus.Desc
+	slabsCurrentChunks    *prometheus.Desc
 	slabsChunksUsed       *prometheus.Desc
 	slabsChunksFree       *prometheus.Desc
 	slabsChunksFreeEnd    *prometheus.Desc
@@ -239,15 +239,15 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 			[]string{"slab"},
 			nil,
 		),
-		slabsPagesTotal: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "slab", "pages_total"),
-			"Total number of pages allocated to this slab class.",
+		slabsCurrentPages: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "slab", "current_pages"),
+			"Number of pages allocated to this slab class.",
 			[]string{"slab"},
 			nil,
 		),
-		slabsChunksTotal: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "slab", "chunks_total"),
-			"Total number of chunks allocated to this slab class.",
+		slabsCurrentChunks: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "slab", "current_chunks"),
+			"Number of chunks allocated to this slab class.",
 			[]string{"slab"},
 			nil,
 		),
@@ -316,8 +316,8 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.itemsExpiredUnfetched
 	ch <- e.slabsChunkSize
 	ch <- e.slabsChunksPerPage
-	ch <- e.slabsPagesTotal
-	ch <- e.slabsChunksTotal
+	ch <- e.slabsCurrentPages
+	ch <- e.slabsCurrentChunks
 	ch <- e.slabsChunksUsed
 	ch <- e.slabsChunksFree
 	ch <- e.slabsChunksFreeEnd
@@ -414,8 +414,8 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 			ch <- prometheus.MustNewConstMetric(e.slabsChunkSize, prometheus.GaugeValue, parse(v, "chunk_size"), slab)
 			ch <- prometheus.MustNewConstMetric(e.slabsChunksPerPage, prometheus.GaugeValue, parse(v, "chunks_per_page"), slab)
-			ch <- prometheus.MustNewConstMetric(e.slabsPagesTotal, prometheus.CounterValue, parse(v, "total_pages"), slab)
-			ch <- prometheus.MustNewConstMetric(e.slabsChunksTotal, prometheus.CounterValue, parse(v, "total_chunks"), slab)
+			ch <- prometheus.MustNewConstMetric(e.slabsCurrentPages, prometheus.GaugeValue, parse(v, "total_pages"), slab)
+			ch <- prometheus.MustNewConstMetric(e.slabsCurrentChunks, prometheus.GaugeValue, parse(v, "total_chunks"), slab)
 			ch <- prometheus.MustNewConstMetric(e.slabsChunksUsed, prometheus.GaugeValue, parse(v, "used_chunks"), slab)
 			ch <- prometheus.MustNewConstMetric(e.slabsChunksFree, prometheus.GaugeValue, parse(v, "free_chunks"), slab)
 			ch <- prometheus.MustNewConstMetric(e.slabsChunksFreeEnd, prometheus.GaugeValue, parse(v, "free_chunks_end"), slab)

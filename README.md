@@ -60,14 +60,16 @@ The exporter collects a number of statistics from the server:
 # TYPE memcached_slab_chunks_free_end gauge
 # HELP memcached_slab_chunks_per_page Number of chunks within a single page for this slab class.
 # TYPE memcached_slab_chunks_per_page gauge
-# HELP memcached_slab_chunks_total Total number of chunks allocated to this slab class.
-# TYPE memcached_slab_chunks_total counter
 # HELP memcached_slab_chunks_used Number of chunks allocated to an item.
 # TYPE memcached_slab_chunks_used gauge
 # HELP memcached_slab_commands_total Total number of all requests broken down by command (get, set, etc.) and status per slab.
 # TYPE memcached_slab_commands_total counter
+# HELP memcached_slab_current_chunks Number of chunks allocated to this slab class.
+# TYPE memcached_slab_current_chunks gauge
 # HELP memcached_slab_current_items Number of items currently stored in this slab class.
 # TYPE memcached_slab_current_items gauge
+# HELP memcached_slab_current_pages Number of pages allocated to this slab class.
+# TYPE memcached_slab_current_pages gauge
 # HELP memcached_slab_items_age_seconds Number of seconds the oldest item has been in the slab class.
 # TYPE memcached_slab_items_age_seconds counter
 # HELP memcached_slab_items_crawler_reclaimed_total Total number of items freed by the LRU Crawler.
@@ -90,8 +92,6 @@ The exporter collects a number of statistics from the server:
 # TYPE memcached_slab_items_tailrepairs_total counter
 # HELP memcached_slab_mem_requested_bytes Number of bytes of memory actual items take up within a slab.
 # TYPE memcached_slab_mem_requested_bytes gauge
-# HELP memcached_slab_pages_total Total number of pages allocated to this slab class.
-# TYPE memcached_slab_pages_total counter
 # HELP memcached_up Could the memcached server be reached.
 # TYPE memcached_up gauge
 # HELP memcached_uptime_seconds Number of seconds since the server started.

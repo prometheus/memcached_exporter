@@ -96,6 +96,8 @@ func TestAcceptance(t *testing.T) {
 		`memcached_slab_commands_total{command="cas",slab="1",status="hit"} 1`,
 		`memcached_slab_commands_total{command="set",slab="5",status="hit"} 1`,
 		`memcached_slab_commands_total{command="cas",slab="5",status="hit"} 0`,
+		`memcached_slab_current_chunks{slab="1"} 10922`,
+		`memcached_slab_current_chunks{slab="5"} 4369`,
 		`memcached_slab_mem_requested_bytes{slab="1"} 74`,
 		`memcached_slab_mem_requested_bytes{slab="5"} 200`,
 	}
