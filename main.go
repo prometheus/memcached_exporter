@@ -6,21 +6,19 @@ import (
 	"io/ioutil"
 	"math"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/Snapbug/gomemcache/memcache"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/version"
 	"github.com/prometheus/log"
 )
 
 const (
 	namespace = "memcached"
-)
-
-var (
-	Version = "0.0.0"
 )
 
 // Exporter collects metrics from a memcached server.
@@ -452,13 +450,20 @@ func main() {
 		address       = flag.String("memcached.address", "localhost:11211", "Memcached server address.")
 		timeout       = flag.Duration("memcached.timeout", time.Second, "memcached connect timeout.")
 		pidFile       = flag.String("memcached.pid-file", "", "Optional path to a file containing the memcached PID for additional metrics.")
+		showVersion   = flag.Bool("version", false, "Print version information.")
 		listenAddress = flag.String("web.listen-address", ":9150", "Address to listen on for web interface and telemetry.")
 		metricsPath   = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
 	)
 	flag.Parse()
 
-	prometheus.MustRegister(NewExporter(*address, *timeout))
+	if *showVersion {
+		fmt.Fprintln(os.Stdout, version.Print("memcached_exporter"))
+		os.Exit(0)
+	}
+	log.Infoln("Starting memcached_exporter", version.Info())
+	log.Infoln("Build context", version.BuildContext())
 
+	prometheus.MustRegister(NewExporter(*address, *timeout))
 	if *pidFile != "" {
 		procExporter := prometheus.NewProcessCollectorPIDFn(
 			func() (int, error) {
@@ -485,6 +490,6 @@ func main() {
              </body>
              </html>`))
 	})
-	log.Infof("Starting memcached_exporter v%s at %s", Version, *listenAddress)
+	log.Infoln("Starting HTTP server on", *listenAddress)
 	log.Fatal(http.ListenAndServe(*listenAddress, nil))
 }

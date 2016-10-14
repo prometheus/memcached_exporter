@@ -54,6 +54,12 @@
 			"revisionTime": "2016-02-28T14:02:37-05:00"
 		},
 		{
+			"checksumSHA1": "91KYK0SpvkaMJJA2+BcxbVnyRO0=",
+			"path": "github.com/prometheus/common/version",
+			"revision": "85637ea67b04b5c3bb25e671dacded2977f8f9f6",
+			"revisionTime": "2016-10-02T21:02:34Z"
+		},
+		{
 			"path": "github.com/prometheus/log",
 			"revision": "9a3136781e1ff7bc42736ba4acb81339b1422551",
 			"revisionTime": "2015-10-26T02:24:52+01:00"
@@ -69,5 +75,5 @@
 			"revisionTime": "2015-11-16T22:15:20-05:00"
 		}
 	],
-	"rootPath": "memcached_exporter"
+	"rootPath": "github.com/prometheus/memcached_exporter"
 }
