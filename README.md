@@ -50,6 +50,8 @@ The exporter collects a number of statistics from the server:
 # TYPE memcached_limit_bytes gauge
 # HELP memcached_malloced_bytes Number of bytes of memory allocated to slab pages.
 # TYPE memcached_malloced_bytes gauge
+# HELP memcached_max_connections Maximum number of clients allowed.
+# TYPE memcached_max_connections gauge
 # HELP memcached_read_bytes_total Total number of bytes read by this server from network.
 # TYPE memcached_read_bytes_total counter
 # HELP memcached_slab_chunk_size_bytes Number of bytes allocated to each chunk within this slab class.

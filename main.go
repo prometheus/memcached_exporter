@@ -30,7 +30,8 @@ type Exporter struct {
 	version               *prometheus.Desc
 	bytesRead             *prometheus.Desc
 	bytesWritten          *prometheus.Desc
-	connections           *prometheus.Desc
+	currentConnections    *prometheus.Desc
+	maxConnections        *prometheus.Desc
 	connectionsTotal      *prometheus.Desc
 	currentBytes          *prometheus.Desc
 	limitBytes            *prometheus.Desc
@@ -99,9 +100,15 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 			nil,
 			nil,
 		),
-		connections: prometheus.NewDesc(
+		currentConnections: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "current_connections"),
 			"Current number of open connections.",
+			nil,
+			nil,
+		),
+		maxConnections: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "max_connections"),
+			"Maximum number of clients allowed.",
 			nil,
 			nil,
 		),
@@ -290,7 +297,8 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.version
 	ch <- e.bytesRead
 	ch <- e.bytesWritten
-	ch <- e.connections
+	ch <- e.currentConnections
+	ch <- e.maxConnections
 	ch <- e.connectionsTotal
 	ch <- e.currentBytes
 	ch <- e.limitBytes
@@ -380,7 +388,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(e.bytesRead, prometheus.CounterValue, parse(s, "bytes_read"))
 		ch <- prometheus.MustNewConstMetric(e.bytesWritten, prometheus.CounterValue, parse(s, "bytes_written"))
 
-		ch <- prometheus.MustNewConstMetric(e.connections, prometheus.GaugeValue, parse(s, "curr_connections"))
+		ch <- prometheus.MustNewConstMetric(e.currentConnections, prometheus.GaugeValue, parse(s, "curr_connections"))
 		ch <- prometheus.MustNewConstMetric(e.connectionsTotal, prometheus.CounterValue, parse(s, "total_connections"))
 
 		ch <- prometheus.MustNewConstMetric(e.evictions, prometheus.CounterValue, parse(s, "evictions"))
@@ -429,6 +437,14 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			ch <- prometheus.MustNewConstMetric(e.slabsChunksFreeEnd, prometheus.GaugeValue, parse(v, "free_chunks_end"), slab)
 			ch <- prometheus.MustNewConstMetric(e.slabsMemRequested, prometheus.GaugeValue, parse(v, "mem_requested"), slab)
 		}
+	}
+
+	statsSettings, err := e.mc.StatsSettings()
+	if err != nil {
+		log.Errorf("Could not query stats settings: %s", err)
+	}
+	for _, settings := range statsSettings {
+		ch <- prometheus.MustNewConstMetric(e.maxConnections, prometheus.GaugeValue, parse(settings, "maxconns"))
 	}
 }
 

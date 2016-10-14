@@ -91,6 +91,7 @@ func TestAcceptance(t *testing.T) {
 		`memcached_commands_total{command="cas",status="hit"} 1`,
 		`memcached_current_bytes 274`,
 		`memcached_current_connections 11`,
+		`memcached_max_connections 1024`,
 		`memcached_current_items 2`,
 		`memcached_items_total 4`,
 		`memcached_slab_current_items{slab="1"} 1`,
