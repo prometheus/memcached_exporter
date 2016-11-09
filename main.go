@@ -13,8 +13,8 @@ import (
 
 	"github.com/Snapbug/gomemcache/memcache"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/log"
 	"github.com/prometheus/common/version"
-	"github.com/prometheus/log"
 )
 
 const (
