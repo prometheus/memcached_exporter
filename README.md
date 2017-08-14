@@ -8,7 +8,7 @@ A [memcached](https://memcached.org/) exporter for prometheus.
 ## Building
 
 The memcached exporter exports metrics from a memcached server for
-consumption by prometheus. The server is specified as `-memcached.address` flag
+consumption by prometheus. The server is specified as `--memcached.address` flag
 to the program (default is `localhost:11211`).
 
 By default the memcache\_exporter serves on port `0.0.0.0:9150` at `/metrics`
@@ -105,7 +105,7 @@ The exporter collects a number of statistics from the server:
 ```
 
 There is also optional support to export metrics about the memcached process
-itself by setting the `-memcached.pid-file <path>` flag. If the
+itself by setting the `--memcached.pid-file <path>` flag. If the
 memcached\_exporter process has the rights to read /proc information of the
 memcached process, then the following metrics will be exported additionally.
 

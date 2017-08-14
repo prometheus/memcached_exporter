@@ -22,7 +22,7 @@ func TestAcceptance(t *testing.T) {
 		addr = strings.TrimLeft(env, "tcp://")
 	}
 
-	exporter := exec.Command("./memcached_exporter", "-memcached.address", addr)
+	exporter := exec.Command("./memcached_exporter", "--memcached.address", addr)
 	go func() {
 		if err := exporter.Run(); err != nil && !done {
 			t.Fatal(err)
