@@ -3,12 +3,6 @@
 	"ignore": "test",
 	"package": [
 		{
-			"checksumSHA1": "2avCvSn0XonfApKKuTMyiQmk7s0=",
-			"path": "github.com/Sirupsen/logrus",
-			"revision": "3ec0642a7fb6488f65b06f9040adc67e3990296a",
-			"revisionTime": "2016-08-29T20:23:21Z"
-		},
-		{
 			"checksumSHA1": "dHY13LSchqw93sfALKHFPwFb/tk=",
 			"path": "github.com/Snapbug/gomemcache/memcache",
 			"revision": "17c49ba473f3c469871d87919da60cf48076da27",
@@ -97,6 +91,18 @@
 			"path": "github.com/prometheus/procfs",
 			"revision": "abf152e5f3e97f2fafac028d2cc06c1feb87ffa5",
 			"revisionTime": "2016-04-11T19:08:41Z"
+		},
+		{
+			"checksumSHA1": "I5DMrLM0FpmvG81tAWZ3zoydBIo=",
+			"path": "github.com/sirupsen/logrus",
+			"revision": "181d419aa9e2223811b824e8f0b4af96f9ba9302",
+			"revisionTime": "2017-07-28T07:42:14Z"
+		},
+		{
+			"checksumSHA1": "bA2gANkJBx2Br/p5GKYdhyGo3Pg=",
+			"path": "golang.org/x/crypto/ssh/terminal",
+			"revision": "d67eb63455fa4d6fca5802332d86f1f204017e00",
+			"revisionTime": "2016-01-05T19:09:27Z"
 		},
 		{
 			"checksumSHA1": "HaylhE+ZhMoB6+4yAsvogKvXUrM=",
