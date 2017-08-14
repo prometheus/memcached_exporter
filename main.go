@@ -1,12 +1,10 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"math"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -15,6 +13,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/log"
 	"github.com/prometheus/common/version"
+	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 const (
@@ -471,19 +470,17 @@ func sum(stats map[string]string, keys ...string) (float64, error) {
 
 func main() {
 	var (
-		address       = flag.String("memcached.address", "localhost:11211", "Memcached server address.")
-		timeout       = flag.Duration("memcached.timeout", time.Second, "memcached connect timeout.")
-		pidFile       = flag.String("memcached.pid-file", "", "Optional path to a file containing the memcached PID for additional metrics.")
-		showVersion   = flag.Bool("version", false, "Print version information.")
-		listenAddress = flag.String("web.listen-address", ":9150", "Address to listen on for web interface and telemetry.")
-		metricsPath   = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
+		address       = kingpin.Flag("memcached.address", "Memcached server address.").Default("localhost:11211").String()
+		timeout       = kingpin.Flag("memcached.timeout", "memcached connect timeout.").Default("1s").Duration()
+		pidFile       = kingpin.Flag("memcached.pid-file", "Optional path to a file containing the memcached PID for additional metrics.").Default("").String()
+		listenAddress = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9150").String()
+		metricsPath   = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
 	)
-	flag.Parse()
+	log.AddFlags(kingpin.CommandLine)
+	kingpin.Version(version.Print("memcached_exporter"))
+	kingpin.HelpFlag.Short('h')
+	kingpin.Parse()
 
-	if *showVersion {
-		fmt.Fprintln(os.Stdout, version.Print("memcached_exporter"))
-		os.Exit(0)
-	}
 	log.Infoln("Starting memcached_exporter", version.Info())
 	log.Infoln("Build context", version.BuildContext())
 
