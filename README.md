@@ -13,14 +13,14 @@ to the program (default is `localhost:11211`).
 
 By default the memcache\_exporter serves on port `0.0.0.0:9150` at `/metrics`
 
-```
+```sh
 make
 ./memcached_exporter
 ```
 
 Alternatively a Dockerfile is supplied
 
-```
+```sh
 docker build -t memcached_exporter .
 docker run memcached_exporter
 ```

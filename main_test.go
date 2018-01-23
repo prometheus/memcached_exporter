@@ -67,7 +67,7 @@ func TestAcceptance(t *testing.T) {
 	if err := client.CompareAndSwap(last); err != nil {
 		t.Fatal(err)
 	}
-	large := &memcache.Item{Key: "large", Value: []byte("Hello World this text should be 128 bytes in size so that we may test the slab functionality of memcached. Filler text here to  ")}
+	large := &memcache.Item{Key: "large", Value: bytes.Repeat([]byte("."), 130)}
 	if err := client.Set(large); err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +89,7 @@ func TestAcceptance(t *testing.T) {
 		`memcached_commands_total{command="get",status="miss"} 1`,
 		`memcached_commands_total{command="set",status="hit"} 3`,
 		`memcached_commands_total{command="cas",status="hit"} 1`,
-		`memcached_current_bytes 274`,
+		`memcached_current_bytes 262`,
 		`memcached_current_connections 11`,
 		`memcached_max_connections 1024`,
 		`memcached_current_items 2`,
@@ -102,8 +102,8 @@ func TestAcceptance(t *testing.T) {
 		`memcached_slab_commands_total{command="cas",slab="5",status="hit"} 0`,
 		`memcached_slab_current_chunks{slab="1"} 10922`,
 		`memcached_slab_current_chunks{slab="5"} 4369`,
-		`memcached_slab_mem_requested_bytes{slab="1"} 74`,
-		`memcached_slab_mem_requested_bytes{slab="5"} 200`,
+		`memcached_slab_mem_requested_bytes{slab="1"} 68`,
+		`memcached_slab_mem_requested_bytes{slab="5"} 194`,
 	}
 	for _, test := range tests {
 		if !bytes.Contains(body, []byte(test)) {
