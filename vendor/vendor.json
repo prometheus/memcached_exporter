@@ -3,12 +3,6 @@
 	"ignore": "test",
 	"package": [
 		{
-			"checksumSHA1": "dHY13LSchqw93sfALKHFPwFb/tk=",
-			"path": "github.com/Snapbug/gomemcache/memcache",
-			"revision": "17c49ba473f3c469871d87919da60cf48076da27",
-			"revisionTime": "2016-10-14T16:10:34Z"
-		},
-		{
 			"checksumSHA1": "KmjnydoAbofMieIWm+it5OWERaM=",
 			"path": "github.com/alecthomas/template",
 			"revision": "a0175ee3bccc567396460bf5acd36800cb10c49c",
@@ -37,6 +31,12 @@
 			"path": "github.com/golang/protobuf/proto",
 			"revision": "c65a0412e71e8b9b3bfd22925720d23c0f054237",
 			"revisionTime": "2018-01-22T22:16:10Z"
+		},
+		{
+			"checksumSHA1": "bJtRFFVEg8nqOzAAmUmKj4J/tCk=",
+			"path": "github.com/grobie/gomemcache/memcache",
+			"revision": "1f779c573665e1f4707b143e780cd3863c05c68b",
+			"revisionTime": "2018-02-01T12:26:07Z"
 		},
 		{
 			"checksumSHA1": "bKMZjd2wPw13VwoE7mBeSv5djFA=",

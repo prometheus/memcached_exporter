@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Snapbug/gomemcache/memcache"
+	"github.com/grobie/gomemcache/memcache"
 )
 
 func TestAcceptance(t *testing.T) {
@@ -41,7 +41,10 @@ func TestAcceptance(t *testing.T) {
 	// TODO(ts): Replace sleep with ready check loop.
 	time.Sleep(100 * time.Millisecond)
 
-	client := memcache.New(addr)
+	client, err := memcache.New(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := client.StatsReset(); err != nil {
 		t.Fatal(err)
 	}
