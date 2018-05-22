@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -14,32 +15,41 @@ import (
 )
 
 func TestAcceptance(t *testing.T) {
-	done := false
+	errc := make(chan error)
 
 	addr := "localhost:11211"
 	// MEMCACHED_PORT might be set by a linked memcached docker container.
 	if env := os.Getenv("MEMCACHED_PORT"); env != "" {
-		addr = strings.TrimLeft(env, "tcp://")
+		addr = strings.TrimPrefix(env, "tcp://")
 	}
 
-	exporter := exec.Command("./memcached_exporter", "--memcached.address", addr)
+	ctx, cancel := context.WithCancel(context.Background())
+	exporter := exec.CommandContext(ctx, "./memcached_exporter", "--memcached.address", addr)
 	go func() {
-		if err := exporter.Run(); err != nil && !done {
-			t.Fatal(err)
-		}
-	}()
-	defer func() {
-		if exporter.Process != nil {
-			exporter.Process.Kill()
+		if err := exporter.Run(); err != nil && errc != nil {
+			errc <- err
 		}
 	}()
 
-	defer func() {
-		done = true
-	}()
+	defer cancel()
 
-	// TODO(ts): Replace sleep with ready check loop.
-	time.Sleep(100 * time.Millisecond)
+	// Wait for the exporter to be up and running.
+OUTER:
+	for {
+		timer := time.NewTimer(100 * time.Millisecond)
+		select {
+		case <-timer.C:
+			resp, err := http.Get("http://localhost:9150/")
+			if err == nil {
+				resp.Body.Close()
+				if resp.StatusCode == http.StatusOK {
+					break OUTER
+				}
+			}
+		case err := <-errc:
+			t.Fatal("error running the exporter:", err)
+		}
+	}
 
 	client, err := memcache.New(addr)
 	if err != nil {
