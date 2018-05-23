@@ -97,13 +97,15 @@ OUTER:
 	}
 
 	tests := []string{
+		// memcached_current_connections varies depending on memcached versions
+		// so it isn't practical to check for an exact value.
+		`memcached_current_connections `,
 		`memcached_up 1`,
 		`memcached_commands_total{command="get",status="hit"} 2`,
 		`memcached_commands_total{command="get",status="miss"} 1`,
 		`memcached_commands_total{command="set",status="hit"} 3`,
 		`memcached_commands_total{command="cas",status="hit"} 1`,
 		`memcached_current_bytes 262`,
-		`memcached_current_connections 11`,
 		`memcached_max_connections 1024`,
 		`memcached_current_items 2`,
 		`memcached_items_total 4`,
