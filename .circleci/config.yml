@@ -11,8 +11,9 @@ jobs:
     - checkout
     - setup_remote_docker
     - run: make promu
-    - docker run -d --name memcached -p 11211:11211 memcached
-    - run: make
+    - run: |
+        docker run -d --name memcached -p 11211:11211 memcached
+        make
     - run: rm -f memcached_exporter
 
   build:
