@@ -493,8 +493,8 @@ func main() {
 
 	prometheus.MustRegister(NewExporter(*address, *timeout))
 	if *pidFile != "" {
-		procExporter := prometheus.NewProcessCollectorPIDFn(
-			func() (int, error) {
+		procExporter := prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{
+			PidFn: func() (int, error) {
 				content, err := ioutil.ReadFile(*pidFile)
 				if err != nil {
 					return 0, fmt.Errorf("Can't read pid file %q: %s", *pidFile, err)
@@ -504,7 +504,9 @@ func main() {
 					return 0, fmt.Errorf("Can't parse pid file %q: %s", *pidFile, err)
 				}
 				return value, nil
-			}, namespace)
+			},
+			Namespace: namespace,
+		})
 		prometheus.MustRegister(procExporter)
 	}
 
