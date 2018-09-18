@@ -5,15 +5,14 @@ jobs:
   test:
     docker:
     - image: circleci/golang:1.10
+    - image: memcached
     working_directory: /go/src/github.com/prometheus/memcached_exporter
 
     steps:
     - checkout
     - setup_remote_docker
     - run: make promu
-    - run: |
-        docker run -d --name memcached -p 11211:11211 memcached
-        make
+    - run: make
     - run: rm -f memcached_exporter
 
   build:
