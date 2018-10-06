@@ -34,6 +34,7 @@ type Exporter struct {
 	currentConnections    *prometheus.Desc
 	maxConnections        *prometheus.Desc
 	connectionsTotal      *prometheus.Desc
+	connsYieldedTotal     *prometheus.Desc
 	currentBytes          *prometheus.Desc
 	limitBytes            *prometheus.Desc
 	commands              *prometheus.Desc
@@ -114,6 +115,12 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 		connectionsTotal: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "connections_total"),
 			"Total number of connections opened since the server started running.",
+			nil,
+			nil,
+		),
+		connsYieldedTotal: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "connections_yielded_total"),
+			"Total number of connections yielded since the server started running due to hitting the memcache's -R limit.",
 			nil,
 			nil,
 		),
@@ -299,6 +306,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.currentConnections
 	ch <- e.maxConnections
 	ch <- e.connectionsTotal
+	ch <- e.connsYieldedTotal
 	ch <- e.currentBytes
 	ch <- e.limitBytes
 	ch <- e.commands
@@ -397,6 +405,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 		ch <- prometheus.MustNewConstMetric(e.currentConnections, prometheus.GaugeValue, parse(s, "curr_connections"))
 		ch <- prometheus.MustNewConstMetric(e.connectionsTotal, prometheus.CounterValue, parse(s, "total_connections"))
+		ch <- prometheus.MustNewConstMetric(e.connsYieldedTotal, prometheus.CounterValue, parse(s, "conn_yields"))
 
 		ch <- prometheus.MustNewConstMetric(e.evictions, prometheus.CounterValue, parse(s, "evictions"))
 		ch <- prometheus.MustNewConstMetric(e.reclaimed, prometheus.CounterValue, parse(s, "reclaimed"))
