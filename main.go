@@ -120,7 +120,7 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 		),
 		connsYieldedTotal: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "connections_yielded_total"),
-			"Total number of connections yielded since the server started running due to hitting the memcache's -R limit.",
+			"Total number of connections yielded running due to hitting the memcached's -R limit.",
 			nil,
 			nil,
 		),

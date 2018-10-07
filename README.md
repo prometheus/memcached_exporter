@@ -33,7 +33,7 @@ The exporter collects a number of statistics from the server:
 # TYPE memcached_commands_total counter
 # HELP memcached_connections_total Total number of connections opened since the server started running.
 # TYPE memcached_connections_total counter
-# HELP memcached_connections_yielded_total Total number of connections yielded since the server started running due to hitting the memcache's -R limit.
+# HELP memcached_connections_yielded_total Total number of connections yielded running due to hitting the memcached's -R limit.
 # TYPE memcached_connections_yielded_total counter
 # HELP memcached_current_bytes Current number of bytes used to store items.
 # TYPE memcached_current_bytes gauge
