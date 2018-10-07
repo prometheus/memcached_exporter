@@ -35,6 +35,7 @@ type Exporter struct {
 	maxConnections        *prometheus.Desc
 	connectionsTotal      *prometheus.Desc
 	connsYieldedTotal     *prometheus.Desc
+	listenerDisabledTotal *prometheus.Desc
 	currentBytes          *prometheus.Desc
 	limitBytes            *prometheus.Desc
 	commands              *prometheus.Desc
@@ -121,6 +122,12 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 		connsYieldedTotal: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "connections_yielded_total"),
 			"Total number of connections yielded running due to hitting the memcached's -R limit.",
+			nil,
+			nil,
+		),
+		listenerDisabledTotal: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "connections_listener_disabled_total"),
+			"Number of times that memcached has hit its connections limit and disabled its listener.",
 			nil,
 			nil,
 		),
@@ -307,6 +314,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.maxConnections
 	ch <- e.connectionsTotal
 	ch <- e.connsYieldedTotal
+	ch <- e.listenerDisabledTotal
 	ch <- e.currentBytes
 	ch <- e.limitBytes
 	ch <- e.commands
@@ -406,6 +414,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(e.currentConnections, prometheus.GaugeValue, parse(s, "curr_connections"))
 		ch <- prometheus.MustNewConstMetric(e.connectionsTotal, prometheus.CounterValue, parse(s, "total_connections"))
 		ch <- prometheus.MustNewConstMetric(e.connsYieldedTotal, prometheus.CounterValue, parse(s, "conn_yields"))
+		ch <- prometheus.MustNewConstMetric(e.listenerDisabledTotal, prometheus.CounterValue, parse(s, "listen_disabled_num"))
 
 		ch <- prometheus.MustNewConstMetric(e.evictions, prometheus.CounterValue, parse(s, "evictions"))
 		ch <- prometheus.MustNewConstMetric(e.reclaimed, prometheus.CounterValue, parse(s, "reclaimed"))
