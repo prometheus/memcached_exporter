@@ -1,3 +1,9 @@
+## v0.5.0 / 2018-10-17
+
+* [FEATURE] Add memcached_connections_yielded_total metric #35
+* [FEATURE] Add memcached_connections_listener_disabled_total metric #36
+* [ENHANCEMENT] Update prometheus client library removing outdated metrics #31
+
 ## v0.4.1 / 2018-02-01
 
 * [BUGFIX] Handle connection errors gracefully in all cases

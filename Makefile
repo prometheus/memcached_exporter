@@ -13,7 +13,4 @@
 
 include Makefile.common
 
-STATICCHECK_IGNORE = \
-  github.com/prometheus/memcached_exporter/main.go:SA1019
-
-DOCKER_IMAGE_NAME       ?= memcached-exporter
+DOCKER_IMAGE_NAME ?= memcached-exporter
