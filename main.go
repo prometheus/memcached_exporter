@@ -516,11 +516,11 @@ func main() {
 			PidFn: func() (int, error) {
 				content, err := ioutil.ReadFile(*pidFile)
 				if err != nil {
-					return 0, fmt.Errorf("Can't read pid file %q: %s", *pidFile, err)
+					return 0, fmt.Errorf("can't read pid file %q: %s", *pidFile, err)
 				}
 				value, err := strconv.Atoi(strings.TrimSpace(string(content)))
 				if err != nil {
-					return 0, fmt.Errorf("Can't parse pid file %q: %s", *pidFile, err)
+					return 0, fmt.Errorf("can't parse pid file %q: %s", *pidFile, err)
 				}
 				return value, nil
 			},
