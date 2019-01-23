@@ -26,6 +26,8 @@ func TestAcceptance(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	exporter := exec.CommandContext(ctx, "./memcached_exporter", "--memcached.address", addr)
 	go func() {
+		defer close(errc)
+
 		if err := exporter.Run(); err != nil && errc != nil {
 			errc <- err
 		}
@@ -124,5 +126,11 @@ OUTER:
 		if !bytes.Contains(body, []byte(test)) {
 			t.Errorf("want metrics to include %q, have:\n%s", test, body)
 		}
+	}
+
+	cancel()
+
+	select {
+	case <-errc:
 	}
 }
