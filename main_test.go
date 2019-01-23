@@ -130,7 +130,5 @@ OUTER:
 
 	cancel()
 
-	select {
-	case <-errc:
-	}
+	<-errc
 }
