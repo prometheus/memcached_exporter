@@ -26,44 +26,53 @@ type Exporter struct {
 	address string
 	timeout time.Duration
 
-	up                    *prometheus.Desc
-	uptime                *prometheus.Desc
-	version               *prometheus.Desc
-	bytesRead             *prometheus.Desc
-	bytesWritten          *prometheus.Desc
-	currentConnections    *prometheus.Desc
-	maxConnections        *prometheus.Desc
-	connectionsTotal      *prometheus.Desc
-	connsYieldedTotal     *prometheus.Desc
-	listenerDisabledTotal *prometheus.Desc
-	currentBytes          *prometheus.Desc
-	limitBytes            *prometheus.Desc
-	commands              *prometheus.Desc
-	items                 *prometheus.Desc
-	itemsTotal            *prometheus.Desc
-	evictions             *prometheus.Desc
-	reclaimed             *prometheus.Desc
-	malloced              *prometheus.Desc
-	itemsNumber           *prometheus.Desc
-	itemsAge              *prometheus.Desc
-	itemsCrawlerReclaimed *prometheus.Desc
-	itemsEvicted          *prometheus.Desc
-	itemsEvictedNonzero   *prometheus.Desc
-	itemsEvictedTime      *prometheus.Desc
-	itemsEvictedUnfetched *prometheus.Desc
-	itemsExpiredUnfetched *prometheus.Desc
-	itemsOutofmemory      *prometheus.Desc
-	itemsReclaimed        *prometheus.Desc
-	itemsTailrepairs      *prometheus.Desc
-	slabsChunkSize        *prometheus.Desc
-	slabsChunksPerPage    *prometheus.Desc
-	slabsCurrentPages     *prometheus.Desc
-	slabsCurrentChunks    *prometheus.Desc
-	slabsChunksUsed       *prometheus.Desc
-	slabsChunksFree       *prometheus.Desc
-	slabsChunksFreeEnd    *prometheus.Desc
-	slabsMemRequested     *prometheus.Desc
-	slabsCommands         *prometheus.Desc
+	up                       *prometheus.Desc
+	uptime                   *prometheus.Desc
+	version                  *prometheus.Desc
+	bytesRead                *prometheus.Desc
+	bytesWritten             *prometheus.Desc
+	currentConnections       *prometheus.Desc
+	maxConnections           *prometheus.Desc
+	connectionsTotal         *prometheus.Desc
+	connsYieldedTotal        *prometheus.Desc
+	listenerDisabledTotal    *prometheus.Desc
+	currentBytes             *prometheus.Desc
+	limitBytes               *prometheus.Desc
+	commands                 *prometheus.Desc
+	items                    *prometheus.Desc
+	itemsTotal               *prometheus.Desc
+	evictions                *prometheus.Desc
+	reclaimed                *prometheus.Desc
+	lruCrawlerStarts         *prometheus.Desc
+	lruCrawlerReclaimed      *prometheus.Desc
+	lruCrawlerItemsChecked   *prometheus.Desc
+	lruCrawlerMovesToCold    *prometheus.Desc
+	lruCrawlerMovesToWarm    *prometheus.Desc
+	lruCrawlerMovesWithinLru *prometheus.Desc
+	malloced                 *prometheus.Desc
+	itemsNumber              *prometheus.Desc
+	itemsAge                 *prometheus.Desc
+	itemsCrawlerReclaimed    *prometheus.Desc
+	itemsEvicted             *prometheus.Desc
+	itemsEvictedNonzero      *prometheus.Desc
+	itemsEvictedTime         *prometheus.Desc
+	itemsEvictedUnfetched    *prometheus.Desc
+	itemsExpiredUnfetched    *prometheus.Desc
+	itemsOutofmemory         *prometheus.Desc
+	itemsReclaimed           *prometheus.Desc
+	itemsTailrepairs         *prometheus.Desc
+	itemsMovesToCold         *prometheus.Desc
+	itemsMovesToWarm         *prometheus.Desc
+	itemsMovesWithinLru      *prometheus.Desc
+	slabsChunkSize           *prometheus.Desc
+	slabsChunksPerPage       *prometheus.Desc
+	slabsCurrentPages        *prometheus.Desc
+	slabsCurrentChunks       *prometheus.Desc
+	slabsChunksUsed          *prometheus.Desc
+	slabsChunksFree          *prometheus.Desc
+	slabsChunksFreeEnd       *prometheus.Desc
+	slabsMemRequested        *prometheus.Desc
+	slabsCommands            *prometheus.Desc
 }
 
 // NewExporter returns an initialized exporter.
@@ -173,6 +182,42 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 			nil,
 			nil,
 		),
+		lruCrawlerStarts: prometheus.NewDesc(
+			prometheus.BuildFQName("namespace", "lru_crawler", "starts"),
+			"Times an LRU crawler was started.",
+			nil,
+			nil,
+		),
+		lruCrawlerReclaimed: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "lru_crawler", "reclaimed"),
+			"Total items freed by LRU Crawler.",
+			nil,
+			nil,
+		),
+		lruCrawlerItemsChecked: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "lru_crawler", "items_checked"),
+			"Total items examined by LRU Crawler.",
+			nil,
+			nil,
+		),
+		lruCrawlerMovesToCold: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "lru_crawler", "moves_to_cold"),
+			"Total number of items moved from HOT/WARM to COLD LRU's.",
+			nil,
+			nil,
+		),
+		lruCrawlerMovesToWarm: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "lru_crawler", "moves_to_warm"),
+			"Total number of items moved from COLD to WARM LRU.",
+			nil,
+			nil,
+		),
+		lruCrawlerMovesWithinLru: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "lru_crawler", "moves_within_lru"),
+			"Total number of items reshuffled within HOT or WARM LRU's.",
+			nil,
+			nil,
+		),
 		malloced: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "malloced_bytes"),
 			"Number of bytes of memory allocated to slab pages.",
@@ -193,7 +238,7 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 		),
 		itemsCrawlerReclaimed: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "slab", "items_crawler_reclaimed_total"),
-			"Total number of items freed by the LRU Crawler.",
+			"Number of items freed by the LRU Crawler.",
 			[]string{"slab"},
 			nil,
 		),
@@ -242,6 +287,24 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 		itemsTailrepairs: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "slab", "items_tailrepairs_total"),
 			"Total number of times the entries for a particular ID need repairing.",
+			[]string{"slab"},
+			nil,
+		),
+		itemsMovesToCold: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "slab", "items_moves_to_cold"),
+			"Number of items moved from HOT or WARM into COLD.",
+			[]string{"slab"},
+			nil,
+		),
+		itemsMovesToWarm: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "slab", "items_moves_to_warm"),
+			"Number of items moves from COLD into WARM.",
+			[]string{"slab"},
+			nil,
+		),
+		itemsMovesWithinLru: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "slab", "items_moves_within_lru"),
+			"Number of times active items were bumped within HOT or WARM.",
 			[]string{"slab"},
 			nil,
 		),
@@ -376,6 +439,9 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		"outofmemory":       e.itemsOutofmemory,
 		"reclaimed":         e.itemsReclaimed,
 		"tailrepairs":       e.itemsTailrepairs,
+		"moves_to_cold":     e.itemsMovesToCold,
+		"moves_to_warm":     e.itemsMovesToWarm,
+		"moves_within_lru":  e.itemsMovesWithinLru,
 	}
 
 	for _, t := range stats {
@@ -418,6 +484,13 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 		ch <- prometheus.MustNewConstMetric(e.evictions, prometheus.CounterValue, parse(s, "evictions"))
 		ch <- prometheus.MustNewConstMetric(e.reclaimed, prometheus.CounterValue, parse(s, "reclaimed"))
+
+		ch <- prometheus.MustNewConstMetric(e.lruCrawlerStarts, prometheus.UntypedValue, parse(s, "lru_crawler_starts"))
+		ch <- prometheus.MustNewConstMetric(e.lruCrawlerItemsChecked, prometheus.CounterValue, parse(s, "crawler_items_checked"))
+		ch <- prometheus.MustNewConstMetric(e.lruCrawlerReclaimed, prometheus.CounterValue, parse(s, "crawler_reclaimed"))
+		ch <- prometheus.MustNewConstMetric(e.lruCrawlerMovesToCold, prometheus.CounterValue, parse(s, "moves_to_cold"))
+		ch <- prometheus.MustNewConstMetric(e.lruCrawlerMovesToWarm, prometheus.CounterValue, parse(s, "moves_to_warm"))
+		ch <- prometheus.MustNewConstMetric(e.lruCrawlerMovesWithinLru, prometheus.CounterValue, parse(s, "moves_within_lru"))
 
 		ch <- prometheus.MustNewConstMetric(e.malloced, prometheus.GaugeValue, parse(s, "total_malloced"))
 
