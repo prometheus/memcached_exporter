@@ -43,6 +43,14 @@ type Exporter struct {
 	itemsTotal               *prometheus.Desc
 	evictions                *prometheus.Desc
 	reclaimed                *prometheus.Desc
+	lruCrawlerEnabled        *prometheus.Desc
+	lruCrawlerSleep          *prometheus.Desc
+	lruCrawlerMaxItems       *prometheus.Desc
+	lruMaintainerThread      *prometheus.Desc
+	lruHotPercent            *prometheus.Desc
+	lruWarmPercent           *prometheus.Desc
+	lruHotMaxAgeFactor       *prometheus.Desc
+	lruWarmMaxAgeFactor      *prometheus.Desc
 	lruCrawlerStarts         *prometheus.Desc
 	lruCrawlerReclaimed      *prometheus.Desc
 	lruCrawlerItemsChecked   *prometheus.Desc
@@ -179,6 +187,54 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 		reclaimed: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "items_reclaimed_total"),
 			"Total number of times an entry was stored using memory from an expired entry.",
+			nil,
+			nil,
+		),
+		lruCrawlerEnabled: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "lru_crawler", "enabled"),
+			"Whether the LRU crawler is enabled.",
+			nil,
+			nil,
+		),
+		lruCrawlerSleep: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "lru_crawler", "sleep"),
+			"Microseconds to sleep between LRU crawls.",
+			nil,
+			nil,
+		),
+		lruCrawlerMaxItems: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "lru_crawler", "to_crawl"),
+			"Max items to crawl per slab per run.",
+			nil,
+			nil,
+		),
+		lruMaintainerThread: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "lru_crawler", "maintainer_thread"),
+			"Split LRU mode and background threads.",
+			nil,
+			nil,
+		),
+		lruHotPercent: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "lru_crawler", "hot_percent"),
+			"Percent of slab memory reserved for HOT LRU.",
+			nil,
+			nil,
+		),
+		lruWarmPercent: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "lru_crawler", "warm_percent"),
+			"Percent of slab memory reserved for WARM LRU.",
+			nil,
+			nil,
+		),
+		lruHotMaxAgeFactor: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "lru_crawler", "hot_max_factor"),
+			"Set idle age of HOT LRU to COLD age * this",
+			nil,
+			nil,
+		),
+		lruWarmMaxAgeFactor: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "lru_crawler", "warm_max_factor"),
+			"Set idle age of WARM LRU to COLD age * this",
 			nil,
 			nil,
 		),
@@ -543,6 +599,14 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	}
 	for _, settings := range statsSettings {
 		ch <- prometheus.MustNewConstMetric(e.maxConnections, prometheus.GaugeValue, parse(settings, "maxconns"))
+		ch <- prometheus.MustNewConstMetric(e.lruCrawlerEnabled, prometheus.GaugeValue, parseBool(settings, "lru_crawler"))
+		ch <- prometheus.MustNewConstMetric(e.lruCrawlerSleep, prometheus.GaugeValue, parse(settings, "lru_crawler_sleep"))
+		ch <- prometheus.MustNewConstMetric(e.lruCrawlerMaxItems, prometheus.GaugeValue, parse(settings, "lru_crawler_tocrawl"))
+		ch <- prometheus.MustNewConstMetric(e.lruMaintainerThread, prometheus.GaugeValue, parseBool(settings, "lru_maintainer_thread"))
+		ch <- prometheus.MustNewConstMetric(e.lruHotPercent, prometheus.GaugeValue, parse(settings, "hot_lru_pct"))
+		ch <- prometheus.MustNewConstMetric(e.lruWarmPercent, prometheus.GaugeValue, parse(settings, "warm_lru_pct"))
+		ch <- prometheus.MustNewConstMetric(e.lruHotMaxAgeFactor, prometheus.GaugeValue, parse(settings, "hot_max_factor"))
+		ch <- prometheus.MustNewConstMetric(e.lruWarmMaxAgeFactor, prometheus.GaugeValue, parse(settings, "warm_max_factor"))
 	}
 }
 
@@ -553,6 +617,18 @@ func parse(stats map[string]string, key string) float64 {
 		v = math.NaN()
 	}
 	return v
+}
+
+func parseBool(stats map[string]string, key string) float64 {
+	switch stats[key] {
+	case "yes":
+		return 1
+	case "no":
+		return 0
+	default:
+		log.Errorf("Failed parse %s %q", key, stats[key])
+		return math.NaN()
+	}
 }
 
 func sum(stats map[string]string, keys ...string) (float64, error) {
