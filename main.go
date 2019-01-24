@@ -441,6 +441,20 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.itemsTotal
 	ch <- e.evictions
 	ch <- e.reclaimed
+	ch <- e.lruCrawlerEnabled
+	ch <- e.lruCrawlerSleep
+	ch <- e.lruCrawlerMaxItems
+	ch <- e.lruMaintainerThread
+	ch <- e.lruHotPercent
+	ch <- e.lruWarmPercent
+	ch <- e.lruHotMaxAgeFactor
+	ch <- e.lruWarmMaxAgeFactor
+	ch <- e.lruCrawlerStarts
+	ch <- e.lruCrawlerReclaimed
+	ch <- e.lruCrawlerItemsChecked
+	ch <- e.lruCrawlerMovesToCold
+	ch <- e.lruCrawlerMovesToWarm
+	ch <- e.lruCrawlerMovesWithinLru
 	ch <- e.malloced
 	ch <- e.itemsNumber
 	ch <- e.itemsAge
@@ -454,6 +468,9 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.itemsReclaimed
 	ch <- e.itemsTailrepairs
 	ch <- e.itemsExpiredUnfetched
+	ch <- e.itemsMovesToCold
+	ch <- e.itemsMovesToWarm
+	ch <- e.itemsMovesWithinLru
 	ch <- e.slabsChunkSize
 	ch <- e.slabsChunksPerPage
 	ch <- e.slabsCurrentPages
