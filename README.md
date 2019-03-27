@@ -13,6 +13,27 @@ to the program (default is `localhost:11211`).
 
 By default the memcache\_exporter serves on port `0.0.0.0:9150` at `/metrics`
 
+
+Add monitor multiple instances per exporter
+
+
+`--memcached.address="127.0.0.1:11211,127.0.0.1:11212"`
+
+```
+# HELP memcached_uptime_seconds Number of seconds since the server started.
+# TYPE memcached_uptime_seconds counter
+memcached_uptime_seconds{server="127.0.0.1:11211"} 1355
+memcached_uptime_seconds{server="127.0.0.1:11212"} 1352
+# HELP memcached_version The version of this memcached server.
+# TYPE memcached_version gauge
+memcached_version{server="127.0.0.1:11211",version="1.5.12"} 1
+memcached_version{server="127.0.0.1:11212",version="1.5.12"} 1
+# HELP memcached_written_bytes_total Total number of bytes sent by this server to network.
+# TYPE memcached_written_bytes_total counter
+memcached_written_bytes_total{server="127.0.0.1:11211"} 139454
+memcached_written_bytes_total{server="127.0.0.1:11212"} 141395
+```
+
 ```sh
 make
 ./memcached_exporter
