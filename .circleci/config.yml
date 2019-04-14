@@ -5,10 +5,10 @@ executors:
   # Whenever the Go version is updated here, .promu.yml should also be updated.
   golang:
     docker:
-    - image: circleci/golang:1.11
+    - image: circleci/golang:1.12
   golang_memcached:
     docker:
-    - image: circleci/golang:1.11
+    - image: circleci/golang:1.12
     - image: memcached
 
 jobs:
