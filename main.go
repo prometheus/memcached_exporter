@@ -18,7 +18,8 @@ import (
 )
 
 const (
-	namespace = "memcached"
+	namespace           = "memcached"
+	subsystemLruCrawler = "lru_crawler"
 )
 
 // Exporter collects metrics from a memcached server.
@@ -191,85 +192,85 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 			nil,
 		),
 		lruCrawlerEnabled: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "lru_crawler", "enabled"),
+			prometheus.BuildFQName(namespace, subsystemLruCrawler, "enabled"),
 			"Whether the LRU crawler is enabled.",
 			nil,
 			nil,
 		),
 		lruCrawlerSleep: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "lru_crawler", "sleep"),
+			prometheus.BuildFQName(namespace, subsystemLruCrawler, "sleep"),
 			"Microseconds to sleep between LRU crawls.",
 			nil,
 			nil,
 		),
 		lruCrawlerMaxItems: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "lru_crawler", "to_crawl"),
+			prometheus.BuildFQName(namespace, subsystemLruCrawler, "to_crawl"),
 			"Max items to crawl per slab per run.",
 			nil,
 			nil,
 		),
 		lruMaintainerThread: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "lru_crawler", "maintainer_thread"),
+			prometheus.BuildFQName(namespace, subsystemLruCrawler, "maintainer_thread"),
 			"Split LRU mode and background threads.",
 			nil,
 			nil,
 		),
 		lruHotPercent: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "lru_crawler", "hot_percent"),
+			prometheus.BuildFQName(namespace, subsystemLruCrawler, "hot_percent"),
 			"Percent of slab memory reserved for HOT LRU.",
 			nil,
 			nil,
 		),
 		lruWarmPercent: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "lru_crawler", "warm_percent"),
+			prometheus.BuildFQName(namespace, subsystemLruCrawler, "warm_percent"),
 			"Percent of slab memory reserved for WARM LRU.",
 			nil,
 			nil,
 		),
 		lruHotMaxAgeFactor: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "lru_crawler", "hot_max_factor"),
+			prometheus.BuildFQName(namespace, subsystemLruCrawler, "hot_max_factor"),
 			"Set idle age of HOT LRU to COLD age * this",
 			nil,
 			nil,
 		),
 		lruWarmMaxAgeFactor: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "lru_crawler", "warm_max_factor"),
+			prometheus.BuildFQName(namespace, subsystemLruCrawler, "warm_max_factor"),
 			"Set idle age of WARM LRU to COLD age * this",
 			nil,
 			nil,
 		),
 		lruCrawlerStarts: prometheus.NewDesc(
-			prometheus.BuildFQName("namespace", "lru_crawler", "starts"),
+			prometheus.BuildFQName("namespace", subsystemLruCrawler, "starts"),
 			"Times an LRU crawler was started.",
 			nil,
 			nil,
 		),
 		lruCrawlerReclaimed: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "lru_crawler", "reclaimed"),
+			prometheus.BuildFQName(namespace, subsystemLruCrawler, "reclaimed"),
 			"Total items freed by LRU Crawler.",
 			nil,
 			nil,
 		),
 		lruCrawlerItemsChecked: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "lru_crawler", "items_checked"),
+			prometheus.BuildFQName(namespace, subsystemLruCrawler, "items_checked"),
 			"Total items examined by LRU Crawler.",
 			nil,
 			nil,
 		),
 		lruCrawlerMovesToCold: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "lru_crawler", "moves_to_cold"),
+			prometheus.BuildFQName(namespace, subsystemLruCrawler, "moves_to_cold"),
 			"Total number of items moved from HOT/WARM to COLD LRU's.",
 			nil,
 			nil,
 		),
 		lruCrawlerMovesToWarm: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "lru_crawler", "moves_to_warm"),
+			prometheus.BuildFQName(namespace, subsystemLruCrawler, "moves_to_warm"),
 			"Total number of items moved from COLD to WARM LRU.",
 			nil,
 			nil,
 		),
 		lruCrawlerMovesWithinLru: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "lru_crawler", "moves_within_lru"),
+			prometheus.BuildFQName(namespace, subsystemLruCrawler, "moves_within_lru"),
 			"Total number of items reshuffled within HOT or WARM LRU's.",
 			nil,
 			nil,
