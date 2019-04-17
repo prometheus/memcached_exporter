@@ -555,7 +555,7 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 		ch <- prometheus.MustNewConstMetric(e.version, prometheus.GaugeValue, 1, s["version"])
 
 		for _, op := range []string{"get", "delete", "incr", "decr", "cas", "touch"} {
-			err := hasError(
+			err := firstError(
 				e.parseAndNewMetric(ch, e.commands, prometheus.CounterValue, s, op+"_hits", op, "hit"),
 				e.parseAndNewMetric(ch, e.commands, prometheus.CounterValue, s, op+"_misses", op, "miss"),
 			)
@@ -563,7 +563,7 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 				parseError = err
 			}
 		}
-		err := hasError(
+		err := firstError(
 			e.parseAndNewMetric(ch, e.uptime, prometheus.CounterValue, s, "uptime"),
 			e.parseAndNewMetric(ch, e.commands, prometheus.CounterValue, s, "cas_badval", "cas", "badval"),
 			e.parseAndNewMetric(ch, e.commands, prometheus.CounterValue, s, "cmd_flush", "flush", "hit"),
@@ -587,7 +587,7 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 		}
 		ch <- prometheus.MustNewConstMetric(e.commands, prometheus.CounterValue, set, "set", "hit")
 
-		err = hasError(
+		err = firstError(
 			e.parseAndNewMetric(ch, e.currentBytes, prometheus.GaugeValue, s, "bytes"),
 			e.parseAndNewMetric(ch, e.limitBytes, prometheus.GaugeValue, s, "limit_maxbytes"),
 			e.parseAndNewMetric(ch, e.items, prometheus.GaugeValue, s, "curr_items"),
@@ -614,7 +614,7 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 
 		for slab, u := range t.Items {
 			slab := strconv.Itoa(slab)
-			err := hasError(
+			err := firstError(
 				e.parseAndNewMetric(ch, e.itemsNumber, prometheus.GaugeValue, u, "number", slab),
 				e.parseAndNewMetric(ch, e.itemsAge, prometheus.GaugeValue, u, "age", slab),
 			)
@@ -657,7 +657,7 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 			}
 			ch <- prometheus.MustNewConstMetric(e.slabsCommands, prometheus.CounterValue, slabSet, slab, "set", "hit")
 
-			err := hasError(
+			err := firstError(
 				e.parseAndNewMetric(ch, e.slabsChunkSize, prometheus.GaugeValue, v, "chunk_size", slab),
 				e.parseAndNewMetric(ch, e.slabsChunksPerPage, prometheus.GaugeValue, v, "chunks_per_page", slab),
 				e.parseAndNewMetric(ch, e.slabsCurrentPages, prometheus.GaugeValue, v, "total_pages", slab),
@@ -684,7 +684,7 @@ func (e *Exporter) parseStatsSettings(ch chan<- prometheus.Metric, statsSettings
 		}
 
 		if v, ok := settings["lru_crawler"]; ok && v == "yes" {
-			err := hasError(
+			err := firstError(
 				e.parseBoolAndNewMetric(ch, e.lruCrawlerEnabled, prometheus.GaugeValue, settings, "lru_crawler"),
 				e.parseAndNewMetric(ch, e.lruCrawlerSleep, prometheus.GaugeValue, settings, "lru_crawler_sleep"),
 				e.parseAndNewMetric(ch, e.lruCrawlerMaxItems, prometheus.GaugeValue, settings, "lru_crawler_tocrawl"),
@@ -765,7 +765,7 @@ func sum(stats map[string]string, keys ...string) (float64, error) {
 	return s, nil
 }
 
-func hasError(errors ...error) error {
+func firstError(errors ...error) error {
 	for _, v := range errors {
 		if v != nil {
 			return v
