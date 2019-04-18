@@ -37,6 +37,8 @@ const (
 	subsystemSlab       = "slab"
 )
 
+var errKeyNotFound = errors.New("key not found")
+
 // Exporter collects metrics from a memcached server.
 type Exporter struct {
 	address string
@@ -572,7 +574,8 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 		}
 
 		// memcached includes cas operations again in cmd_set.
-		if setCmd, err := strconv.ParseFloat(s["cmd_set"], 64); err == nil {
+		setCmd, err := parse(s, "cmd_set")
+		if err == nil {
 			if cas, casErr := sum(s, "cas_misses", "cas_hits", "cas_badval"); casErr == nil {
 				ch <- prometheus.MustNewConstMetric(e.commands, prometheus.CounterValue, setCmd-cas, "set", "hit")
 			} else {
@@ -580,7 +583,7 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 				parseError = casErr
 			}
 		} else {
-			log.Errorf("Failed to parse set %q: %s", s["cmd_set"], err)
+			log.Errorf("Failed to parse set: %s", err)
 			parseError = err
 		}
 
@@ -640,7 +643,8 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 				parseError = err
 			}
 
-			if slabSetCmd, err := strconv.ParseFloat(v["cmd_set"], 64); err == nil {
+			slabSetCmd, err := parse(v, "cmd_set")
+			if err == nil {
 				if slabCas, slabCasErr := sum(v, "cas_hits", "cas_badval"); slabCasErr == nil {
 					ch <- prometheus.MustNewConstMetric(e.slabsCommands, prometheus.CounterValue, slabSetCmd-slabCas, slab, "set", "hit")
 				} else {
@@ -648,11 +652,11 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 					parseError = slabCasErr
 				}
 			} else {
-				log.Errorf("Failed to parse set %q: %s", v["cmd_set"], err)
+				log.Errorf("Failed to parse set: %s", err)
 				parseError = err
 			}
 
-			err := firstError(
+			err = firstError(
 				e.parseAndNewMetric(ch, e.slabsChunkSize, prometheus.GaugeValue, v, "chunk_size", slab),
 				e.parseAndNewMetric(ch, e.slabsChunksPerPage, prometheus.GaugeValue, v, "chunks_per_page", slab),
 				e.parseAndNewMetric(ch, e.slabsCurrentPages, prometheus.GaugeValue, v, "total_pages", slab),
@@ -707,6 +711,9 @@ func (e *Exporter) parseBoolAndNewMetric(ch chan<- prometheus.Metric, desc *prom
 
 func (e *Exporter) extractValueAndNewMetric(ch chan<- prometheus.Metric, desc *prometheus.Desc, valueType prometheus.ValueType, f func(map[string]string, string) (float64, error), stats map[string]string, key string, labelValues ...string) error {
 	v, err := f(stats, key)
+	if err == errKeyNotFound {
+		return nil
+	}
 	if err != nil {
 		return err
 	}
@@ -719,7 +726,7 @@ func parse(stats map[string]string, key string) (float64, error) {
 	value, ok := stats[key]
 	if !ok {
 		log.Errorf("Key not found: %s", key)
-		return 0, errors.New("key not found")
+		return 0, errKeyNotFound
 	}
 
 	v, err := strconv.ParseFloat(value, 64)
@@ -734,7 +741,7 @@ func parseBool(stats map[string]string, key string) (float64, error) {
 	value, ok := stats[key]
 	if !ok {
 		log.Errorf("Key not found: %s", key)
-		return 0, errors.New("key not found")
+		return 0, errKeyNotFound
 	}
 
 	switch value {
@@ -751,6 +758,9 @@ func parseBool(stats map[string]string, key string) (float64, error) {
 func sum(stats map[string]string, keys ...string) (float64, error) {
 	s := 0.
 	for _, key := range keys {
+		if _, ok := stats[key]; !ok {
+			return 0, errKeyNotFound
+		}
 		v, err := strconv.ParseFloat(stats[key], 64)
 		if err != nil {
 			return 0, err
