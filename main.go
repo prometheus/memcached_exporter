@@ -17,7 +17,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"math"
 	"net"
 	"net/http"
 	"strconv"
@@ -573,10 +572,9 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 		}
 
 		// memcached includes cas operations again in cmd_set.
-		set := math.NaN()
 		if setCmd, err := strconv.ParseFloat(s["cmd_set"], 64); err == nil {
 			if cas, casErr := sum(s, "cas_misses", "cas_hits", "cas_badval"); casErr == nil {
-				set = setCmd - cas
+				ch <- prometheus.MustNewConstMetric(e.commands, prometheus.CounterValue, setCmd-cas, "set", "hit")
 			} else {
 				log.Errorf("Failed to parse cas: %s", casErr)
 				parseError = casErr
@@ -585,7 +583,6 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 			log.Errorf("Failed to parse set %q: %s", s["cmd_set"], err)
 			parseError = err
 		}
-		ch <- prometheus.MustNewConstMetric(e.commands, prometheus.CounterValue, set, "set", "hit")
 
 		err = firstError(
 			e.parseAndNewMetric(ch, e.currentBytes, prometheus.GaugeValue, s, "bytes"),
@@ -643,10 +640,9 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 				parseError = err
 			}
 
-			slabSet := math.NaN()
 			if slabSetCmd, err := strconv.ParseFloat(v["cmd_set"], 64); err == nil {
 				if slabCas, slabCasErr := sum(v, "cas_hits", "cas_badval"); slabCasErr == nil {
-					slabSet = slabSetCmd - slabCas
+					ch <- prometheus.MustNewConstMetric(e.slabsCommands, prometheus.CounterValue, slabSetCmd-slabCas, slab, "set", "hit")
 				} else {
 					log.Errorf("Failed to parse cas: %s", slabCasErr)
 					parseError = slabCasErr
@@ -655,7 +651,6 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 				log.Errorf("Failed to parse set %q: %s", v["cmd_set"], err)
 				parseError = err
 			}
-			ch <- prometheus.MustNewConstMetric(e.slabsCommands, prometheus.CounterValue, slabSet, slab, "set", "hit")
 
 			err := firstError(
 				e.parseAndNewMetric(ch, e.slabsChunkSize, prometheus.GaugeValue, v, "chunk_size", slab),
@@ -724,13 +719,13 @@ func parse(stats map[string]string, key string) (float64, error) {
 	value, ok := stats[key]
 	if !ok {
 		log.Errorf("Key not found: %s", key)
-		return math.NaN(), errors.New("key not found")
+		return 0, errors.New("key not found")
 	}
 
 	v, err := strconv.ParseFloat(value, 64)
 	if err != nil {
 		log.Errorf("Failed to parse %s %q: %s", key, value, err)
-		return math.NaN(), err
+		return 0, err
 	}
 	return v, nil
 }
@@ -739,7 +734,7 @@ func parseBool(stats map[string]string, key string) (float64, error) {
 	value, ok := stats[key]
 	if !ok {
 		log.Errorf("Key not found: %s", key)
-		return math.NaN(), errors.New("key not found")
+		return 0, errors.New("key not found")
 	}
 
 	switch value {
@@ -749,7 +744,7 @@ func parseBool(stats map[string]string, key string) (float64, error) {
 		return 0, nil
 	default:
 		log.Errorf("Failed parse %s %q", key, value)
-		return math.NaN(), errors.New("failed parse a bool value")
+		return 0, errors.New("failed parse a bool value")
 	}
 }
 
@@ -758,7 +753,7 @@ func sum(stats map[string]string, keys ...string) (float64, error) {
 	for _, key := range keys {
 		v, err := strconv.ParseFloat(stats[key], 64)
 		if err != nil {
-			return math.NaN(), err
+			return 0, err
 		}
 		s += v
 	}
