@@ -1,7 +1,11 @@
-FROM        quay.io/prometheus/busybox:latest
+ARG ARCH="amd64"
+ARG OS="linux"
+FROM quay.io/prometheus/busybox-${OS}-${ARCH}:latest
 LABEL maintainer="The Prometheus Authors <prometheus-developers@googlegroups.com>"
 
-COPY memcached_exporter /bin/memcached_exporter
+ARG ARCH="amd64"
+ARG OS="linux"
+COPY .build/${OS}-${ARCH}/memcached_exporter /bin/memcached_exporter
 
 USER       nobody
 ENTRYPOINT ["/bin/memcached_exporter"]
