@@ -725,7 +725,7 @@ func (e *Exporter) extractValueAndNewMetric(ch chan<- prometheus.Metric, desc *p
 func parse(stats map[string]string, key string) (float64, error) {
 	value, ok := stats[key]
 	if !ok {
-		log.Errorf("Key not found: %s", key)
+		log.Debugf("Key not found: %s", key)
 		return 0, errKeyNotFound
 	}
 
@@ -740,7 +740,7 @@ func parse(stats map[string]string, key string) (float64, error) {
 func parseBool(stats map[string]string, key string) (float64, error) {
 	value, ok := stats[key]
 	if !ok {
-		log.Errorf("Key not found: %s", key)
+		log.Debugf("Key not found: %s", key)
 		return 0, errKeyNotFound
 	}
 
