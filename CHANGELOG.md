@@ -1,3 +1,9 @@
+## v0.6.0 / 2019-08-25
+
+* [CHANGE] Handle non-existent metrics without NaN values #53
+* [ENHANCEMENT] Do not run as root by default in Docker #54
+* [ENHANCEMENT] Update prometheus client library
+
 ## v0.5.0 / 2018-10-17
 
 * [FEATURE] Add memcached_connections_yielded_total metric #35
