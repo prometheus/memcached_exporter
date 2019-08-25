@@ -14,9 +14,10 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
-	"math"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -35,6 +36,8 @@ const (
 	subsystemLruCrawler = "lru_crawler"
 	subsystemSlab       = "slab"
 )
+
+var errKeyNotFound = errors.New("key not found")
 
 // Exporter collects metrics from a memcached server.
 type Exporter struct {
@@ -508,14 +511,29 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	}
 	c.Timeout = e.timeout
 
+	up := float64(1)
 	stats, err := c.Stats()
 	if err != nil {
-		ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 0)
 		log.Errorf("Failed to collect stats from memcached: %s", err)
-		return
+		up = 0
 	}
-	ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 1)
+	statsSettings, err := c.StatsSettings()
+	if err != nil {
+		log.Errorf("Could not query stats settings: %s", err)
+		up = 0
+	}
 
+	if err := e.parseStats(ch, stats); err != nil {
+		up = 0
+	}
+	if err := e.parseStatsSettings(ch, statsSettings); err != nil {
+		up = 0
+	}
+
+	ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, up)
+}
+
+func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]memcache.Stats) error {
 	// TODO(ts): Clean up and consolidate metric mappings.
 	itemsMetrics := map[string]*prometheus.Desc{
 		"crawler_reclaimed": e.itemsCrawlerReclaimed,
@@ -532,65 +550,84 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		"moves_within_lru":  e.itemsMovesWithinLru,
 	}
 
+	var parseError error
 	for _, t := range stats {
 		s := t.Stats
-		ch <- prometheus.MustNewConstMetric(e.uptime, prometheus.CounterValue, parse(s, "uptime"))
 		ch <- prometheus.MustNewConstMetric(e.version, prometheus.GaugeValue, 1, s["version"])
 
 		for _, op := range []string{"get", "delete", "incr", "decr", "cas", "touch"} {
-			ch <- prometheus.MustNewConstMetric(e.commands, prometheus.CounterValue, parse(s, op+"_hits"), op, "hit")
-			ch <- prometheus.MustNewConstMetric(e.commands, prometheus.CounterValue, parse(s, op+"_misses"), op, "miss")
+			err := firstError(
+				e.parseAndNewMetric(ch, e.commands, prometheus.CounterValue, s, op+"_hits", op, "hit"),
+				e.parseAndNewMetric(ch, e.commands, prometheus.CounterValue, s, op+"_misses", op, "miss"),
+			)
+			if err != nil {
+				parseError = err
+			}
 		}
-		ch <- prometheus.MustNewConstMetric(e.commands, prometheus.CounterValue, parse(s, "cas_badval"), "cas", "badval")
-		ch <- prometheus.MustNewConstMetric(e.commands, prometheus.CounterValue, parse(s, "cmd_flush"), "flush", "hit")
+		err := firstError(
+			e.parseAndNewMetric(ch, e.uptime, prometheus.CounterValue, s, "uptime"),
+			e.parseAndNewMetric(ch, e.commands, prometheus.CounterValue, s, "cas_badval", "cas", "badval"),
+			e.parseAndNewMetric(ch, e.commands, prometheus.CounterValue, s, "cmd_flush", "flush", "hit"),
+		)
+		if err != nil {
+			parseError = err
+		}
 
 		// memcached includes cas operations again in cmd_set.
-		set := math.NaN()
-		if setCmd, err := strconv.ParseFloat(s["cmd_set"], 64); err == nil {
+		setCmd, err := parse(s, "cmd_set")
+		if err == nil {
 			if cas, casErr := sum(s, "cas_misses", "cas_hits", "cas_badval"); casErr == nil {
-				set = setCmd - cas
+				ch <- prometheus.MustNewConstMetric(e.commands, prometheus.CounterValue, setCmd-cas, "set", "hit")
 			} else {
 				log.Errorf("Failed to parse cas: %s", casErr)
+				parseError = casErr
 			}
 		} else {
-			log.Errorf("Failed to parse set %q: %s", s["cmd_set"], err)
+			log.Errorf("Failed to parse set: %s", err)
+			parseError = err
 		}
-		ch <- prometheus.MustNewConstMetric(e.commands, prometheus.CounterValue, set, "set", "hit")
 
-		ch <- prometheus.MustNewConstMetric(e.currentBytes, prometheus.GaugeValue, parse(s, "bytes"))
-		ch <- prometheus.MustNewConstMetric(e.limitBytes, prometheus.GaugeValue, parse(s, "limit_maxbytes"))
-		ch <- prometheus.MustNewConstMetric(e.items, prometheus.GaugeValue, parse(s, "curr_items"))
-		ch <- prometheus.MustNewConstMetric(e.itemsTotal, prometheus.CounterValue, parse(s, "total_items"))
-
-		ch <- prometheus.MustNewConstMetric(e.bytesRead, prometheus.CounterValue, parse(s, "bytes_read"))
-		ch <- prometheus.MustNewConstMetric(e.bytesWritten, prometheus.CounterValue, parse(s, "bytes_written"))
-
-		ch <- prometheus.MustNewConstMetric(e.currentConnections, prometheus.GaugeValue, parse(s, "curr_connections"))
-		ch <- prometheus.MustNewConstMetric(e.connectionsTotal, prometheus.CounterValue, parse(s, "total_connections"))
-		ch <- prometheus.MustNewConstMetric(e.connsYieldedTotal, prometheus.CounterValue, parse(s, "conn_yields"))
-		ch <- prometheus.MustNewConstMetric(e.listenerDisabledTotal, prometheus.CounterValue, parse(s, "listen_disabled_num"))
-
-		ch <- prometheus.MustNewConstMetric(e.evictions, prometheus.CounterValue, parse(s, "evictions"))
-		ch <- prometheus.MustNewConstMetric(e.reclaimed, prometheus.CounterValue, parse(s, "reclaimed"))
-
-		ch <- prometheus.MustNewConstMetric(e.lruCrawlerStarts, prometheus.UntypedValue, parse(s, "lru_crawler_starts"))
-		ch <- prometheus.MustNewConstMetric(e.lruCrawlerItemsChecked, prometheus.CounterValue, parse(s, "crawler_items_checked"))
-		ch <- prometheus.MustNewConstMetric(e.lruCrawlerReclaimed, prometheus.CounterValue, parse(s, "crawler_reclaimed"))
-		ch <- prometheus.MustNewConstMetric(e.lruCrawlerMovesToCold, prometheus.CounterValue, parse(s, "moves_to_cold"))
-		ch <- prometheus.MustNewConstMetric(e.lruCrawlerMovesToWarm, prometheus.CounterValue, parse(s, "moves_to_warm"))
-		ch <- prometheus.MustNewConstMetric(e.lruCrawlerMovesWithinLru, prometheus.CounterValue, parse(s, "moves_within_lru"))
-
-		ch <- prometheus.MustNewConstMetric(e.malloced, prometheus.GaugeValue, parse(s, "total_malloced"))
+		err = firstError(
+			e.parseAndNewMetric(ch, e.currentBytes, prometheus.GaugeValue, s, "bytes"),
+			e.parseAndNewMetric(ch, e.limitBytes, prometheus.GaugeValue, s, "limit_maxbytes"),
+			e.parseAndNewMetric(ch, e.items, prometheus.GaugeValue, s, "curr_items"),
+			e.parseAndNewMetric(ch, e.itemsTotal, prometheus.CounterValue, s, "total_items"),
+			e.parseAndNewMetric(ch, e.bytesRead, prometheus.CounterValue, s, "bytes_read"),
+			e.parseAndNewMetric(ch, e.bytesWritten, prometheus.CounterValue, s, "bytes_written"),
+			e.parseAndNewMetric(ch, e.currentConnections, prometheus.GaugeValue, s, "curr_connections"),
+			e.parseAndNewMetric(ch, e.connectionsTotal, prometheus.CounterValue, s, "total_connections"),
+			e.parseAndNewMetric(ch, e.connsYieldedTotal, prometheus.CounterValue, s, "conn_yields"),
+			e.parseAndNewMetric(ch, e.listenerDisabledTotal, prometheus.CounterValue, s, "listen_disabled_num"),
+			e.parseAndNewMetric(ch, e.evictions, prometheus.CounterValue, s, "evictions"),
+			e.parseAndNewMetric(ch, e.reclaimed, prometheus.CounterValue, s, "reclaimed"),
+			e.parseAndNewMetric(ch, e.lruCrawlerStarts, prometheus.UntypedValue, s, "lru_crawler_starts"),
+			e.parseAndNewMetric(ch, e.lruCrawlerItemsChecked, prometheus.CounterValue, s, "crawler_items_checked"),
+			e.parseAndNewMetric(ch, e.lruCrawlerReclaimed, prometheus.CounterValue, s, "crawler_reclaimed"),
+			e.parseAndNewMetric(ch, e.lruCrawlerMovesToCold, prometheus.CounterValue, s, "moves_to_cold"),
+			e.parseAndNewMetric(ch, e.lruCrawlerMovesToWarm, prometheus.CounterValue, s, "moves_to_warm"),
+			e.parseAndNewMetric(ch, e.lruCrawlerMovesWithinLru, prometheus.CounterValue, s, "moves_within_lru"),
+			e.parseAndNewMetric(ch, e.malloced, prometheus.GaugeValue, s, "total_malloced"),
+		)
+		if err != nil {
+			parseError = err
+		}
 
 		for slab, u := range t.Items {
 			slab := strconv.Itoa(slab)
-			ch <- prometheus.MustNewConstMetric(e.itemsNumber, prometheus.GaugeValue, parse(u, "number"), slab)
-			ch <- prometheus.MustNewConstMetric(e.itemsAge, prometheus.GaugeValue, parse(u, "age"), slab)
+			err := firstError(
+				e.parseAndNewMetric(ch, e.itemsNumber, prometheus.GaugeValue, u, "number", slab),
+				e.parseAndNewMetric(ch, e.itemsAge, prometheus.GaugeValue, u, "age", slab),
+			)
+			if err != nil {
+				parseError = err
+			}
 			for m, d := range itemsMetrics {
 				if _, ok := u[m]; !ok {
 					continue
 				}
-				ch <- prometheus.MustNewConstMetric(d, prometheus.CounterValue, parse(u, m), slab)
+				if err := e.parseAndNewMetric(ch, d, prometheus.CounterValue, u, m, slab); err != nil {
+					parseError = err
+				}
 			}
 		}
 
@@ -598,81 +635,148 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			slab := strconv.Itoa(slab)
 
 			for _, op := range []string{"get", "delete", "incr", "decr", "cas", "touch"} {
-				ch <- prometheus.MustNewConstMetric(e.slabsCommands, prometheus.CounterValue, parse(v, op+"_hits"), slab, op, "hit")
+				if err := e.parseAndNewMetric(ch, e.slabsCommands, prometheus.CounterValue, v, op+"_hits", slab, op, "hit"); err != nil {
+					parseError = err
+				}
 			}
-			ch <- prometheus.MustNewConstMetric(e.slabsCommands, prometheus.CounterValue, parse(v, "cas_badval"), slab, "cas", "badval")
+			if err := e.parseAndNewMetric(ch, e.slabsCommands, prometheus.CounterValue, v, "cas_badval", slab, "cas", "badval"); err != nil {
+				parseError = err
+			}
 
-			slabSet := math.NaN()
-			if slabSetCmd, err := strconv.ParseFloat(v["cmd_set"], 64); err == nil {
+			slabSetCmd, err := parse(v, "cmd_set")
+			if err == nil {
 				if slabCas, slabCasErr := sum(v, "cas_hits", "cas_badval"); slabCasErr == nil {
-					slabSet = slabSetCmd - slabCas
+					ch <- prometheus.MustNewConstMetric(e.slabsCommands, prometheus.CounterValue, slabSetCmd-slabCas, slab, "set", "hit")
 				} else {
 					log.Errorf("Failed to parse cas: %s", slabCasErr)
+					parseError = slabCasErr
 				}
 			} else {
-				log.Errorf("Failed to parse set %q: %s", v["cmd_set"], err)
+				log.Errorf("Failed to parse set: %s", err)
+				parseError = err
 			}
-			ch <- prometheus.MustNewConstMetric(e.slabsCommands, prometheus.CounterValue, slabSet, slab, "set", "hit")
 
-			ch <- prometheus.MustNewConstMetric(e.slabsChunkSize, prometheus.GaugeValue, parse(v, "chunk_size"), slab)
-			ch <- prometheus.MustNewConstMetric(e.slabsChunksPerPage, prometheus.GaugeValue, parse(v, "chunks_per_page"), slab)
-			ch <- prometheus.MustNewConstMetric(e.slabsCurrentPages, prometheus.GaugeValue, parse(v, "total_pages"), slab)
-			ch <- prometheus.MustNewConstMetric(e.slabsCurrentChunks, prometheus.GaugeValue, parse(v, "total_chunks"), slab)
-			ch <- prometheus.MustNewConstMetric(e.slabsChunksUsed, prometheus.GaugeValue, parse(v, "used_chunks"), slab)
-			ch <- prometheus.MustNewConstMetric(e.slabsChunksFree, prometheus.GaugeValue, parse(v, "free_chunks"), slab)
-			ch <- prometheus.MustNewConstMetric(e.slabsChunksFreeEnd, prometheus.GaugeValue, parse(v, "free_chunks_end"), slab)
-			ch <- prometheus.MustNewConstMetric(e.slabsMemRequested, prometheus.GaugeValue, parse(v, "mem_requested"), slab)
+			err = firstError(
+				e.parseAndNewMetric(ch, e.slabsChunkSize, prometheus.GaugeValue, v, "chunk_size", slab),
+				e.parseAndNewMetric(ch, e.slabsChunksPerPage, prometheus.GaugeValue, v, "chunks_per_page", slab),
+				e.parseAndNewMetric(ch, e.slabsCurrentPages, prometheus.GaugeValue, v, "total_pages", slab),
+				e.parseAndNewMetric(ch, e.slabsCurrentChunks, prometheus.GaugeValue, v, "total_chunks", slab),
+				e.parseAndNewMetric(ch, e.slabsChunksUsed, prometheus.GaugeValue, v, "used_chunks", slab),
+				e.parseAndNewMetric(ch, e.slabsChunksFree, prometheus.GaugeValue, v, "free_chunks", slab),
+				e.parseAndNewMetric(ch, e.slabsChunksFreeEnd, prometheus.GaugeValue, v, "free_chunks_end", slab),
+				e.parseAndNewMetric(ch, e.slabsMemRequested, prometheus.GaugeValue, v, "mem_requested", slab),
+			)
+			if err != nil {
+				parseError = err
+			}
 		}
 	}
 
-	statsSettings, err := c.StatsSettings()
-	if err != nil {
-		log.Errorf("Could not query stats settings: %s", err)
-	}
+	return parseError
+}
+
+func (e *Exporter) parseStatsSettings(ch chan<- prometheus.Metric, statsSettings map[net.Addr]map[string]string) error {
+	var parseError error
 	for _, settings := range statsSettings {
-		ch <- prometheus.MustNewConstMetric(e.maxConnections, prometheus.GaugeValue, parse(settings, "maxconns"))
-		ch <- prometheus.MustNewConstMetric(e.lruCrawlerEnabled, prometheus.GaugeValue, parseBool(settings, "lru_crawler"))
-		ch <- prometheus.MustNewConstMetric(e.lruCrawlerSleep, prometheus.GaugeValue, parse(settings, "lru_crawler_sleep"))
-		ch <- prometheus.MustNewConstMetric(e.lruCrawlerMaxItems, prometheus.GaugeValue, parse(settings, "lru_crawler_tocrawl"))
-		ch <- prometheus.MustNewConstMetric(e.lruMaintainerThread, prometheus.GaugeValue, parseBool(settings, "lru_maintainer_thread"))
-		ch <- prometheus.MustNewConstMetric(e.lruHotPercent, prometheus.GaugeValue, parse(settings, "hot_lru_pct"))
-		ch <- prometheus.MustNewConstMetric(e.lruWarmPercent, prometheus.GaugeValue, parse(settings, "warm_lru_pct"))
-		ch <- prometheus.MustNewConstMetric(e.lruHotMaxAgeFactor, prometheus.GaugeValue, parse(settings, "hot_max_factor"))
-		ch <- prometheus.MustNewConstMetric(e.lruWarmMaxAgeFactor, prometheus.GaugeValue, parse(settings, "warm_max_factor"))
+		if err := e.parseAndNewMetric(ch, e.maxConnections, prometheus.GaugeValue, settings, "maxconns"); err != nil {
+			parseError = err
+		}
+
+		if v, ok := settings["lru_crawler"]; ok && v == "yes" {
+			err := firstError(
+				e.parseBoolAndNewMetric(ch, e.lruCrawlerEnabled, prometheus.GaugeValue, settings, "lru_crawler"),
+				e.parseAndNewMetric(ch, e.lruCrawlerSleep, prometheus.GaugeValue, settings, "lru_crawler_sleep"),
+				e.parseAndNewMetric(ch, e.lruCrawlerMaxItems, prometheus.GaugeValue, settings, "lru_crawler_tocrawl"),
+				e.parseBoolAndNewMetric(ch, e.lruMaintainerThread, prometheus.GaugeValue, settings, "lru_maintainer_thread"),
+				e.parseAndNewMetric(ch, e.lruHotPercent, prometheus.GaugeValue, settings, "hot_lru_pct"),
+				e.parseAndNewMetric(ch, e.lruWarmPercent, prometheus.GaugeValue, settings, "warm_lru_pct"),
+				e.parseAndNewMetric(ch, e.lruHotMaxAgeFactor, prometheus.GaugeValue, settings, "hot_max_factor"),
+				e.parseAndNewMetric(ch, e.lruWarmMaxAgeFactor, prometheus.GaugeValue, settings, "warm_max_factor"),
+			)
+			if err != nil {
+				parseError = err
+			}
+		}
 	}
+	return parseError
 }
 
-func parse(stats map[string]string, key string) float64 {
-	v, err := strconv.ParseFloat(stats[key], 64)
+func (e *Exporter) parseAndNewMetric(ch chan<- prometheus.Metric, desc *prometheus.Desc, valueType prometheus.ValueType, stats map[string]string, key string, labelValues ...string) error {
+	return e.extractValueAndNewMetric(ch, desc, valueType, parse, stats, key, labelValues...)
+}
+
+func (e *Exporter) parseBoolAndNewMetric(ch chan<- prometheus.Metric, desc *prometheus.Desc, valueType prometheus.ValueType, stats map[string]string, key string, labelValues ...string) error {
+	return e.extractValueAndNewMetric(ch, desc, valueType, parseBool, stats, key, labelValues...)
+}
+
+func (e *Exporter) extractValueAndNewMetric(ch chan<- prometheus.Metric, desc *prometheus.Desc, valueType prometheus.ValueType, f func(map[string]string, string) (float64, error), stats map[string]string, key string, labelValues ...string) error {
+	v, err := f(stats, key)
+	if err == errKeyNotFound {
+		return nil
+	}
 	if err != nil {
-		log.Errorf("Failed to parse %s %q: %s", key, stats[key], err)
-		v = math.NaN()
+		return err
 	}
-	return v
+
+	ch <- prometheus.MustNewConstMetric(desc, valueType, v, labelValues...)
+	return nil
 }
 
-func parseBool(stats map[string]string, key string) float64 {
-	switch stats[key] {
+func parse(stats map[string]string, key string) (float64, error) {
+	value, ok := stats[key]
+	if !ok {
+		log.Debugf("Key not found: %s", key)
+		return 0, errKeyNotFound
+	}
+
+	v, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		log.Errorf("Failed to parse %s %q: %s", key, value, err)
+		return 0, err
+	}
+	return v, nil
+}
+
+func parseBool(stats map[string]string, key string) (float64, error) {
+	value, ok := stats[key]
+	if !ok {
+		log.Debugf("Key not found: %s", key)
+		return 0, errKeyNotFound
+	}
+
+	switch value {
 	case "yes":
-		return 1
+		return 1, nil
 	case "no":
-		return 0
+		return 0, nil
 	default:
-		log.Errorf("Failed parse %s %q", key, stats[key])
-		return math.NaN()
+		log.Errorf("Failed parse %s %q", key, value)
+		return 0, errors.New("failed parse a bool value")
 	}
 }
 
 func sum(stats map[string]string, keys ...string) (float64, error) {
 	s := 0.
 	for _, key := range keys {
+		if _, ok := stats[key]; !ok {
+			return 0, errKeyNotFound
+		}
 		v, err := strconv.ParseFloat(stats[key], 64)
 		if err != nil {
-			return math.NaN(), err
+			return 0, err
 		}
 		s += v
 	}
 	return s, nil
+}
+
+func firstError(errors ...error) error {
+	for _, v := range errors {
+		if v != nil {
+			return v
+		}
+	}
+	return nil
 }
 
 func main() {
