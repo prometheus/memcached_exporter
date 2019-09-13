@@ -6,17 +6,21 @@ orbs:
 
 executors:
   # Whenever the Go version is updated here, .promu.yml should also be updated.
-  golang:
-    docker:
-    - image: circleci/golang:1.12
   golang_memcached:
+    parameters:
+      memcached_version:
+        type: string
     docker:
     - image: circleci/golang:1.12
-    - image: memcached
+    - image: memcached:<< parameters.memcached_version >>
 
 jobs:
   test:
-    executor: golang_memcached
+    parameters:
+      exec:
+        type: executor
+
+    executor: << parameters.exec >>
 
     steps:
     - prometheus/setup_environment
@@ -31,6 +35,18 @@ workflows:
   memcached_exporter:
     jobs:
     - test:
+        name: test-1.5.16
+        exec:
+          name: golang_memcached
+          memcached_version: "1.5.16"
+        filters:
+          tags:
+            only: /.*/
+    - test:
+        name: test-latest
+        exec:
+          name: golang_memcached
+          memcached_version: latest
         filters:
           tags:
             only: /.*/
@@ -42,7 +58,8 @@ workflows:
     - prometheus/publish_master:
         context: org-context
         requires:
-        - test
+        - test-1.5.16
+        - test-latest
         - build
         filters:
           branches:
@@ -50,7 +67,8 @@ workflows:
     - prometheus/publish_release:
         context: org-context
         requires:
-        - test
+        - test-1.5.16
+        - test-latest
         - build
         filters:
           tags:
