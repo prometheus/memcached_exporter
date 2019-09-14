@@ -3,22 +3,22 @@
 [![Docker Repository on Quay](https://quay.io/repository/prometheus/memcached-exporter/status)][quay]
 [![Docker Pulls](https://img.shields.io/docker/pulls/prom/memcached-exporter.svg?maxAge=604800)][hub]
 
-A [memcached](https://memcached.org/) exporter for prometheus.
+A [memcached](https://memcached.org/) exporter for Prometheus.
 
 ## Building
 
 The memcached exporter exports metrics from a memcached server for
-consumption by prometheus. The server is specified as `--memcached.address` flag
+consumption by Prometheus. The server is specified as `--memcached.address` flag
 to the program (default is `localhost:11211`).
 
-By default the memcache\_exporter serves on port `0.0.0.0:9150` at `/metrics`
+By default the memcache\_exporter serves on port `0.0.0.0:9150` at `/metrics`:
 
 ```sh
 make
 ./memcached_exporter
 ```
 
-Alternatively a Dockerfile is supplied
+Alternatively a Dockerfile is supplied:
 
 ```sh
 docker run -p 9150:9150 quay.io/prometheus/memcached-exporter:v0.5.0
@@ -107,10 +107,7 @@ The exporter collects a number of statistics from the server:
 # TYPE memcached_written_bytes_total counter
 ```
 
-There is also optional support to export metrics about the memcached process
-itself by setting the `--memcached.pid-file <path>` flag. If the
-memcached\_exporter process has the rights to read /proc information of the
-memcached process, then the following metrics will be exported additionally.
+There is also optional support to export metrics about the memcached process itself by setting the `--memcached.pid-file <path>` flag. If the memcached_exporter process has the rights to read /proc information of the memcached process, then the following metrics will be exported additionally.
 
 ```
 # HELP memcached_process_cpu_seconds_total Total user and system CPU time spent in seconds.
