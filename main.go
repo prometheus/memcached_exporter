@@ -545,6 +545,7 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 		"outofmemory":       e.itemsOutofmemory,
 		"reclaimed":         e.itemsReclaimed,
 		"tailrepairs":       e.itemsTailrepairs,
+		"mem_requested":     e.slabsMemRequested,
 		"moves_to_cold":     e.itemsMovesToCold,
 		"moves_to_warm":     e.itemsMovesToWarm,
 		"moves_within_lru":  e.itemsMovesWithinLru,

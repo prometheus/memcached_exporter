@@ -1,3 +1,7 @@
+## master / unreleased
+
+* [BUGFIX] Fix mem_requested change in memcached 1.5.17 #68
+
 ## v0.6.0 / 2019-08-25
 
 * [CHANGE] Handle non-existent metrics without NaN values #53
