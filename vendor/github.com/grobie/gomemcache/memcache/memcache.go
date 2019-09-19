@@ -847,10 +847,13 @@ func (c *Client) statsSettingsFromAddr(addr net.Addr, cb func(map[string]string)
 		stats := map[string]string{}
 		for err == nil && !bytes.Equal(line, resultEnd) {
 			s := bytes.Split(line, []byte(" "))
-			if len(s) != 3 || !bytes.HasPrefix(s[0], resultStatPrefix) {
+			if len(s) == 3 {
+				stats[string(s[1])] = string(bytes.TrimSpace(s[2]))
+			} else if len(s) == 4 {
+				stats[string(s[1])] = string(bytes.TrimSpace(s[2])) + "-" + string(bytes.TrimSpace(s[2]))
+			} else {
 				return fmt.Errorf("memcache: unexpected stats line format %q", line)
 			}
-			stats[string(s[1])] = string(bytes.TrimSpace(s[2]))
 			line, err = rw.ReadSlice('\n')
 			if err != nil {
 				return err
