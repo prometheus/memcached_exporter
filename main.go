@@ -19,14 +19,18 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 	"github.com/grobie/gomemcache/memcache"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/prometheus/common/log"
+	"github.com/prometheus/common/promlog"
+	"github.com/prometheus/common/promlog/flag"
 	"github.com/prometheus/common/version"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
@@ -43,6 +47,7 @@ var errKeyNotFound = errors.New("key not found")
 type Exporter struct {
 	address string
 	timeout time.Duration
+	logger  log.Logger
 
 	up                       *prometheus.Desc
 	uptime                   *prometheus.Desc
@@ -102,10 +107,11 @@ type Exporter struct {
 }
 
 // NewExporter returns an initialized exporter.
-func NewExporter(server string, timeout time.Duration) *Exporter {
+func NewExporter(server string, timeout time.Duration, logger log.Logger) *Exporter {
 	return &Exporter{
 		address: server,
 		timeout: timeout,
+		logger:  logger,
 		up: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "up"),
 			"Could the memcached server be reached.",
@@ -506,7 +512,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	c, err := memcache.New(e.address)
 	if err != nil {
 		ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 0)
-		log.Errorf("Failed to connect to memcached: %s", err)
+		level.Error(e.logger).Log("msg", "Failed to connect to memcached", "err", err)
 		return
 	}
 	c.Timeout = e.timeout
@@ -514,12 +520,12 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	up := float64(1)
 	stats, err := c.Stats()
 	if err != nil {
-		log.Errorf("Failed to collect stats from memcached: %s", err)
+		level.Error(e.logger).Log("msg", "Failed to collect stats from memcached", "err", err)
 		up = 0
 	}
 	statsSettings, err := c.StatsSettings()
 	if err != nil {
-		log.Errorf("Could not query stats settings: %s", err)
+		level.Error(e.logger).Log("msg", "Could not query stats settings", "err", err)
 		up = 0
 	}
 
@@ -574,16 +580,16 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 		}
 
 		// memcached includes cas operations again in cmd_set.
-		setCmd, err := parse(s, "cmd_set")
+		setCmd, err := parse(s, "cmd_set", e.logger)
 		if err == nil {
 			if cas, casErr := sum(s, "cas_misses", "cas_hits", "cas_badval"); casErr == nil {
 				ch <- prometheus.MustNewConstMetric(e.commands, prometheus.CounterValue, setCmd-cas, "set", "hit")
 			} else {
-				log.Errorf("Failed to parse cas: %s", casErr)
+				level.Error(e.logger).Log("msg", "Failed to parse cas", "err", casErr)
 				parseError = casErr
 			}
 		} else {
-			log.Errorf("Failed to parse set: %s", err)
+			level.Error(e.logger).Log("msg", "Failed to parse set", "err", err)
 			parseError = err
 		}
 
@@ -643,16 +649,16 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 				parseError = err
 			}
 
-			slabSetCmd, err := parse(v, "cmd_set")
+			slabSetCmd, err := parse(v, "cmd_set", e.logger)
 			if err == nil {
 				if slabCas, slabCasErr := sum(v, "cas_hits", "cas_badval"); slabCasErr == nil {
 					ch <- prometheus.MustNewConstMetric(e.slabsCommands, prometheus.CounterValue, slabSetCmd-slabCas, slab, "set", "hit")
 				} else {
-					log.Errorf("Failed to parse cas: %s", slabCasErr)
+					level.Error(e.logger).Log("msg", "Failed to parse cas", "err", slabCasErr)
 					parseError = slabCasErr
 				}
 			} else {
-				log.Errorf("Failed to parse set: %s", err)
+				level.Error(e.logger).Log("msg", "Failed to parse set", "err", err)
 				parseError = err
 			}
 
@@ -709,8 +715,8 @@ func (e *Exporter) parseBoolAndNewMetric(ch chan<- prometheus.Metric, desc *prom
 	return e.extractValueAndNewMetric(ch, desc, valueType, parseBool, stats, key, labelValues...)
 }
 
-func (e *Exporter) extractValueAndNewMetric(ch chan<- prometheus.Metric, desc *prometheus.Desc, valueType prometheus.ValueType, f func(map[string]string, string) (float64, error), stats map[string]string, key string, labelValues ...string) error {
-	v, err := f(stats, key)
+func (e *Exporter) extractValueAndNewMetric(ch chan<- prometheus.Metric, desc *prometheus.Desc, valueType prometheus.ValueType, f func(map[string]string, string, log.Logger) (float64, error), stats map[string]string, key string, labelValues ...string) error {
+	v, err := f(stats, key, e.logger)
 	if err == errKeyNotFound {
 		return nil
 	}
@@ -722,25 +728,25 @@ func (e *Exporter) extractValueAndNewMetric(ch chan<- prometheus.Metric, desc *p
 	return nil
 }
 
-func parse(stats map[string]string, key string) (float64, error) {
+func parse(stats map[string]string, key string, logger log.Logger) (float64, error) {
 	value, ok := stats[key]
 	if !ok {
-		log.Debugf("Key not found: %s", key)
+		level.Debug(logger).Log("msg", "Key not found", "key", key)
 		return 0, errKeyNotFound
 	}
 
 	v, err := strconv.ParseFloat(value, 64)
 	if err != nil {
-		log.Errorf("Failed to parse %s %q: %s", key, value, err)
+		level.Error(logger).Log("msg", "Failed to parse", "key", key, "value", value, "err", err)
 		return 0, err
 	}
 	return v, nil
 }
 
-func parseBool(stats map[string]string, key string) (float64, error) {
+func parseBool(stats map[string]string, key string, logger log.Logger) (float64, error) {
 	value, ok := stats[key]
 	if !ok {
-		log.Debugf("Key not found: %s", key)
+		level.Debug(logger).Log("msg", "Key not found", "key", key)
 		return 0, errKeyNotFound
 	}
 
@@ -750,7 +756,7 @@ func parseBool(stats map[string]string, key string) (float64, error) {
 	case "no":
 		return 0, nil
 	default:
-		log.Errorf("Failed parse %s %q", key, value)
+		level.Error(logger).Log("msg", "Failed to parse", "key", key, "value", value)
 		return 0, errors.New("failed parse a bool value")
 	}
 }
@@ -787,15 +793,16 @@ func main() {
 		listenAddress = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9150").String()
 		metricsPath   = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
 	)
-	log.AddFlags(kingpin.CommandLine)
-	kingpin.Version(version.Print("memcached_exporter"))
+	promlogConfig := &promlog.Config{}
+	flag.AddFlags(kingpin.CommandLine, promlogConfig)
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
+	logger := promlog.New(promlogConfig)
 
-	log.Infoln("Starting memcached_exporter", version.Info())
-	log.Infoln("Build context", version.BuildContext())
+	level.Info(logger).Log("msg", "Starting memcached_exporter", "version", version.Info())
+	level.Info(logger).Log("msg", "Build context", "context", version.BuildContext())
 
-	prometheus.MustRegister(NewExporter(*address, *timeout))
+	prometheus.MustRegister(NewExporter(*address, *timeout, logger))
 	if *pidFile != "" {
 		procExporter := prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{
 			PidFn: func() (int, error) {
@@ -824,6 +831,10 @@ func main() {
              </body>
              </html>`))
 	})
-	log.Infoln("Starting HTTP server on", *listenAddress)
-	log.Fatal(http.ListenAndServe(*listenAddress, nil))
+
+	level.Info(logger).Log("msg", "Listening on address", "address", *listenAddress)
+	if err := http.ListenAndServe(*listenAddress, nil); err != nil {
+		level.Error(logger).Log("msg", "Error running HTTP server", "err", err)
+		os.Exit(1)
+	}
 }

@@ -25,6 +25,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-kit/kit/log"
 	"github.com/grobie/gomemcache/memcache"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -171,7 +172,7 @@ func TestParseStatsSettings(t *testing.T) {
 			},
 		}
 		ch := make(chan prometheus.Metric, 100)
-		e := NewExporter("", 100*time.Millisecond)
+		e := NewExporter("", 100*time.Millisecond, log.NewNopLogger())
 		if err := e.parseStatsSettings(ch, statsSettings); err != nil {
 			t.Errorf("expect return error, error: %v", err)
 		}
@@ -193,7 +194,7 @@ func TestParseStatsSettings(t *testing.T) {
 			},
 		}
 		ch := make(chan prometheus.Metric, 100)
-		e := NewExporter("", 100*time.Millisecond)
+		e := NewExporter("", 100*time.Millisecond, log.NewNopLogger())
 		if err := e.parseStatsSettings(ch, statsSettings); err == nil {
 			t.Error("expect return error but not")
 		}
