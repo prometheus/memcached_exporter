@@ -574,7 +574,7 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 		}
 		err := firstError(
 			e.parseAndNewMetric(ch, e.uptime, prometheus.CounterValue, s, "uptime"),
-			e.parseAndNewMetric(ch, e.time, prometheus.CounterValue, s, "time"),
+			e.parseAndNewMetric(ch, e.time, prometheus.GaugeValue, s, "time"),
 			e.parseAndNewMetric(ch, e.commands, prometheus.CounterValue, s, "cas_badval", "cas", "badval"),
 			e.parseAndNewMetric(ch, e.commands, prometheus.CounterValue, s, "cmd_flush", "flush", "hit"),
 		)
