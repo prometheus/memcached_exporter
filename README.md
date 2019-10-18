@@ -99,6 +99,8 @@ The exporter collects a number of statistics from the server:
 # TYPE memcached_slab_mem_requested_bytes gauge
 # HELP memcached_up Could the memcached server be reached.
 # TYPE memcached_up gauge
+# HELP memcached_time_seconds current UNIX time according to the server.
+# TYPE memcached_time_seconds counter
 # HELP memcached_uptime_seconds Number of seconds since the server started.
 # TYPE memcached_uptime_seconds counter
 # HELP memcached_version The version of this memcached server.
