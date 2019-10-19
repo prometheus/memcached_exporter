@@ -46,6 +46,7 @@ type Exporter struct {
 
 	up                       *prometheus.Desc
 	uptime                   *prometheus.Desc
+	time                     *prometheus.Desc
 	version                  *prometheus.Desc
 	bytesRead                *prometheus.Desc
 	bytesWritten             *prometheus.Desc
@@ -115,6 +116,12 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 		uptime: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "uptime_seconds"),
 			"Number of seconds since the server started.",
+			nil,
+			nil,
+		),
+		time: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "time_seconds"),
+			"current UNIX time according to the server.",
 			nil,
 			nil,
 		),
@@ -444,6 +451,7 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.up
 	ch <- e.uptime
+	ch <- e.time
 	ch <- e.version
 	ch <- e.bytesRead
 	ch <- e.bytesWritten
@@ -566,6 +574,7 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 		}
 		err := firstError(
 			e.parseAndNewMetric(ch, e.uptime, prometheus.CounterValue, s, "uptime"),
+			e.parseAndNewMetric(ch, e.time, prometheus.GaugeValue, s, "time"),
 			e.parseAndNewMetric(ch, e.commands, prometheus.CounterValue, s, "cas_badval", "cas", "badval"),
 			e.parseAndNewMetric(ch, e.commands, prometheus.CounterValue, s, "cmd_flush", "flush", "hit"),
 		)
