@@ -96,6 +96,13 @@ type Exporter struct {
 	itemsMovesToCold         *prometheus.Desc
 	itemsMovesToWarm         *prometheus.Desc
 	itemsMovesWithinLru      *prometheus.Desc
+	itemsHot                 *prometheus.Desc
+	itemsWarm                *prometheus.Desc
+	itemsCold                *prometheus.Desc
+	itemsTemporary           *prometheus.Desc
+	itemsAgeOldestHot        *prometheus.Desc
+	itemsAgeOldestWarm       *prometheus.Desc
+	itemsLruHits             *prometheus.Desc
 	slabsChunkSize           *prometheus.Desc
 	slabsChunksPerPage       *prometheus.Desc
 	slabsCurrentPages        *prometheus.Desc
@@ -395,6 +402,48 @@ func NewExporter(server string, timeout time.Duration, logger log.Logger) *Expor
 			[]string{"slab"},
 			nil,
 		),
+		itemsHot: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, subsystemSlab, "hot_items"),
+			"Number of items presently stored in the HOT LRU.",
+			[]string{"slab"},
+			nil,
+		),
+		itemsWarm: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, subsystemSlab, "warm_items"),
+			"Number of items presently stored in the WARM LRU.",
+			[]string{"slab"},
+			nil,
+		),
+		itemsCold: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, subsystemSlab, "cold_items"),
+			"Number of items presently stored in the COLD LRU.",
+			[]string{"slab"},
+			nil,
+		),
+		itemsTemporary: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, subsystemSlab, "temporary_items"),
+			"Number of items presently stored in the TEMPORARY LRU.",
+			[]string{"slab"},
+			nil,
+		),
+		itemsAgeOldestHot: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, subsystemSlab, "hot_age_seconds"),
+			"Age of the oldest item in HOT LRU.",
+			[]string{"slab"},
+			nil,
+		),
+		itemsAgeOldestWarm: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, subsystemSlab, "warm_age_seconds"),
+			"Age of the oldest item in HOT LRU.",
+			[]string{"slab"},
+			nil,
+		),
+		itemsLruHits: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, subsystemSlab, "lru_hits_total"),
+			"Number of get_hits to the LRU.",
+			[]string{"slab", "lru"},
+			nil,
+		),
 		slabsChunkSize: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, subsystemSlab, "chunk_size_bytes"),
 			"Number of bytes allocated to each chunk within this slab class.",
@@ -487,6 +536,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.lruCrawlerMovesToCold
 	ch <- e.lruCrawlerMovesToWarm
 	ch <- e.lruCrawlerMovesWithinLru
+	ch <- e.itemsLruHits
 	ch <- e.malloced
 	ch <- e.itemsNumber
 	ch <- e.itemsAge
@@ -503,6 +553,12 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.itemsMovesToCold
 	ch <- e.itemsMovesToWarm
 	ch <- e.itemsMovesWithinLru
+	ch <- e.itemsHot
+	ch <- e.itemsWarm
+	ch <- e.itemsCold
+	ch <- e.itemsTemporary
+	ch <- e.itemsAgeOldestHot
+	ch <- e.itemsAgeOldestWarm
 	ch <- e.slabsChunkSize
 	ch <- e.slabsChunksPerPage
 	ch <- e.slabsCurrentPages
@@ -549,7 +605,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]memcache.Stats) error {
 	// TODO(ts): Clean up and consolidate metric mappings.
-	itemsMetrics := map[string]*prometheus.Desc{
+	itemsCounterMetrics := map[string]*prometheus.Desc{
 		"crawler_reclaimed": e.itemsCrawlerReclaimed,
 		"evicted":           e.itemsEvicted,
 		"evicted_nonzero":   e.itemsEvictedNonzero,
@@ -563,6 +619,15 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 		"moves_to_cold":     e.itemsMovesToCold,
 		"moves_to_warm":     e.itemsMovesToWarm,
 		"moves_within_lru":  e.itemsMovesWithinLru,
+	}
+
+	itemsGaugeMetrics := map[string]*prometheus.Desc{
+		"number_hot":  e.itemsHot,
+		"number_warm": e.itemsWarm,
+		"number_cold": e.itemsCold,
+		"number_temp": e.itemsTemporary,
+		"age_hot":     e.itemsAgeOldestHot,
+		"age_warm":    e.itemsAgeOldestWarm,
 	}
 
 	var parseError error
@@ -633,15 +698,27 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 			err := firstError(
 				e.parseAndNewMetric(ch, e.itemsNumber, prometheus.GaugeValue, u, "number", slab),
 				e.parseAndNewMetric(ch, e.itemsAge, prometheus.GaugeValue, u, "age", slab),
+				e.parseAndNewMetric(ch, e.itemsLruHits, prometheus.CounterValue, u, "hits_to_hot", slab, "hot"),
+				e.parseAndNewMetric(ch, e.itemsLruHits, prometheus.CounterValue, u, "hits_to_warm", slab, "warm"),
+				e.parseAndNewMetric(ch, e.itemsLruHits, prometheus.CounterValue, u, "hits_to_cold", slab, "cold"),
+				e.parseAndNewMetric(ch, e.itemsLruHits, prometheus.CounterValue, u, "hits_to_temp", slab, "temporary"),
 			)
 			if err != nil {
 				parseError = err
 			}
-			for m, d := range itemsMetrics {
+			for m, d := range itemsCounterMetrics {
 				if _, ok := u[m]; !ok {
 					continue
 				}
 				if err := e.parseAndNewMetric(ch, d, prometheus.CounterValue, u, m, slab); err != nil {
+					parseError = err
+				}
+			}
+			for m, d := range itemsGaugeMetrics {
+				if _, ok := u[m]; !ok {
+					continue
+				}
+				if err := e.parseAndNewMetric(ch, d, prometheus.GaugeValue, u, m, slab); err != nil {
 					parseError = err
 				}
 			}
