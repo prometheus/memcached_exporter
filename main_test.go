@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -103,6 +104,28 @@ OUTER:
 		t.Fatal(err)
 	}
 
+	stats_settings, err := client.StatsSettings()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	use_temp_lru := false
+	for _, t := range stats_settings {
+		if t["temp_lru"] == "true" {
+			use_temp_lru = true
+		}
+	}
+
+	stats, err := client.Stats()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	memcache_version := ""
+	for _, t := range stats {
+		memcache_version = t.Stats["version"]
+	}
+
 	resp, err := http.Get("http://localhost:9150/metrics")
 	if err != nil {
 		t.Fatal(err)
@@ -138,6 +161,40 @@ OUTER:
 		`memcached_slab_mem_requested_bytes{slab="1"} 68`,
 		`memcached_slab_mem_requested_bytes{slab="5"} 194`,
 	}
+
+	if use_temp_lru == true {
+		tests = append(tests,
+			`memcached_slab_temporary_items{slab="1"}`,
+			`memcached_slab_lru_hits_total{lru="temporary",slab="5"}`,
+			`memcached_slab_temporary_items{slab="5"}`)
+	}
+
+	memcache_version_major_minor, err := strconv.ParseFloat(memcache_version[0:3], 64)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if memcache_version_major_minor >= 1.5 {
+		tests = append(tests,
+			`memcached_slab_lru_hits_total{lru="hot",slab="1"}`,
+			`memcached_slab_lru_hits_total{lru="cold",slab="1"}`,
+			`memcached_slab_lru_hits_total{lru="warm",slab="1"}`,
+			`memcached_slab_lru_hits_total{lru="temporary",slab="1"}`,
+			`memcached_slab_hot_items{slab="1"}`,
+			`memcached_slab_warm_items{slab="1"}`,
+			`memcached_slab_cold_items{slab="1"}`,
+			`memcached_slab_hot_age_seconds{slab="1"}`,
+			`memcached_slab_warm_age_seconds{slab="1"}`,
+			`memcached_slab_lru_hits_total{lru="hot",slab="5"}`,
+			`memcached_slab_lru_hits_total{lru="cold",slab="5"}`,
+			`memcached_slab_lru_hits_total{lru="warm",slab="5"}`,
+			`memcached_slab_hot_items{slab="5"}`,
+			`memcached_slab_warm_items{slab="5"}`,
+			`memcached_slab_cold_items{slab="5"}`,
+			`memcached_slab_hot_age_seconds{slab="5"}`,
+			`memcached_slab_warm_age_seconds{slab="5"}`)
+	}
+
 	for _, test := range tests {
 		if !bytes.Contains(body, []byte(test)) {
 			t.Errorf("want metrics to include %q, have:\n%s", test, body)
