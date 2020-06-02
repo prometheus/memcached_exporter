@@ -277,7 +277,7 @@ func NewExporter(server string, timeout time.Duration, logger log.Logger) *Expor
 			nil,
 		),
 		lruCrawlerStarts: prometheus.NewDesc(
-			prometheus.BuildFQName("namespace", subsystemLruCrawler, "starts"),
+			prometheus.BuildFQName(namespace, subsystemLruCrawler, "starts_total"),
 			"Times an LRU crawler was started.",
 			nil,
 			nil,
@@ -681,7 +681,7 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 			e.parseAndNewMetric(ch, e.listenerDisabledTotal, prometheus.CounterValue, s, "listen_disabled_num"),
 			e.parseAndNewMetric(ch, e.evictions, prometheus.CounterValue, s, "evictions"),
 			e.parseAndNewMetric(ch, e.reclaimed, prometheus.CounterValue, s, "reclaimed"),
-			e.parseAndNewMetric(ch, e.lruCrawlerStarts, prometheus.UntypedValue, s, "lru_crawler_starts"),
+			e.parseAndNewMetric(ch, e.lruCrawlerStarts, prometheus.CounterValue, s, "lru_crawler_starts"),
 			e.parseAndNewMetric(ch, e.lruCrawlerItemsChecked, prometheus.CounterValue, s, "crawler_items_checked"),
 			e.parseAndNewMetric(ch, e.lruCrawlerReclaimed, prometheus.CounterValue, s, "crawler_reclaimed"),
 			e.parseAndNewMetric(ch, e.lruCrawlerMovesToCold, prometheus.CounterValue, s, "moves_to_cold"),

@@ -71,6 +71,8 @@ The exporter collects a number of statistics from the server:
 # TYPE memcached_lru_crawler_reclaimed_total counter
 # HELP memcached_lru_crawler_sleep Microseconds to sleep between LRU crawls.
 # TYPE memcached_lru_crawler_sleep gauge
+# HELP memcached_lru_crawler_starts_total Times an LRU crawler was started.
+# TYPE memcached_lru_crawler_starts_total counter
 # HELP memcached_lru_crawler_to_crawl Max items to crawl per slab per run.
 # TYPE memcached_lru_crawler_to_crawl gauge
 # HELP memcached_lru_crawler_warm_max_factor Set idle age of WARM LRU to COLD age * this
