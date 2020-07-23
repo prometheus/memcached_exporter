@@ -1,3 +1,11 @@
+## v0.7.0 / 2020-07-23
+
+* [CHANGE] Switch logging to go-kit #73
+* [CHANGE] Register `memcached_lru_crawler_starts_total` metric correctly (formerly `namespace_lru_crawler_starts`) #83
+* [ENHANCEMENT] Add `memcached_time_seconds` metric #74
+* [ENHANCEMENT] Add slab metrics related to hot/warm/cold/temp LRUs #76
+* [BUGFIX] Fix `memcached_slab_mem_requested_bytes` metric in newer memcached versions #70
+
 ## v0.6.0 / 2019-08-25
 
 * [CHANGE] Handle non-existent metrics without NaN values #53

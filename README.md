@@ -21,7 +21,7 @@ make
 Alternatively a Dockerfile is supplied:
 
 ```sh
-docker run -p 9150:9150 quay.io/prometheus/memcached-exporter:v0.5.0
+docker run -p 9150:9150 quay.io/prometheus/memcached-exporter:v0.7.0
 ```
 
 ## Collectors
