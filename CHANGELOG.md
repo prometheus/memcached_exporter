@@ -1,3 +1,7 @@
+# NEXT
+
+* [ENHANCEMENT] Add get_flushed and get_expired status to `memcached_commands_total` metric #93
+
 ## 0.7.0 / 2020-07-24
 
 * [CHANGE] Switch logging to go-kit #73
