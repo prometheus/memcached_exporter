@@ -883,12 +883,14 @@ func main() {
 	promlogConfig := &promlog.Config{}
 	flag.AddFlags(kingpin.CommandLine, promlogConfig)
 	kingpin.HelpFlag.Short('h')
+	kingpin.Version(version.Print("memcached_exporter"))
 	kingpin.Parse()
 	logger := promlog.New(promlogConfig)
 
 	level.Info(logger).Log("msg", "Starting memcached_exporter", "version", version.Info())
 	level.Info(logger).Log("msg", "Build context", "context", version.BuildContext())
 
+	prometheus.MustRegister(version.NewCollector("memcached_exporter"))
 	prometheus.MustRegister(NewExporter(*address, *timeout, logger))
 	if *pidFile != "" {
 		procExporter := prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{
