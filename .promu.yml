@@ -5,6 +5,9 @@ go:
 repository:
     path: github.com/prometheus/memcached_exporter
 build:
+    binaries:
+      - name: memcached_exporter
+        path: ./cmd/memcached_exporter
     flags: -mod=vendor -a -tags netgo
     ldflags: |
         -X github.com/prometheus/common/version.Version={{.Version}}
