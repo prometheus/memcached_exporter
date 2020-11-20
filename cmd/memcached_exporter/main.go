@@ -27,7 +27,7 @@ import (
 	"github.com/prometheus/common/promlog"
 	"github.com/prometheus/common/promlog/flag"
 	"github.com/prometheus/common/version"
-	"github.com/prometheus/memcached_exporter/exporter"
+	"github.com/prometheus/memcached_exporter/pkg/exporter"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
