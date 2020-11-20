@@ -38,7 +38,7 @@ func TestAcceptance(t *testing.T) {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	exporter := exec.CommandContext(ctx, "./memcached_exporter", "--memcached.address", addr)
+	exporter := exec.CommandContext(ctx, "../../memcached_exporter", "--memcached.address", addr)
 	go func() {
 		defer close(errc)
 

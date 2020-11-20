@@ -1,6 +1,5 @@
 /.build
 /.release
 /.tarballs
-memcached_exporter
-!cmd/memcached_exporter
+/memcached_exporter
 *.tar.gz
