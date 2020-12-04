@@ -1,4 +1,4 @@
-// Copyright 2019 The Prometheus Authors
+// Copyright 2020 The Prometheus Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -11,32 +11,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package exporter
 
 import (
 	"errors"
-	"fmt"
-	"io/ioutil"
 	"net"
-	"net/http"
-	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/grobie/gomemcache/memcache"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/prometheus/common/promlog"
-	"github.com/prometheus/common/promlog/flag"
-	"github.com/prometheus/common/version"
-	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 const (
-	namespace           = "memcached"
+	Namespace           = "memcached"
 	subsystemLruCrawler = "lru_crawler"
 	subsystemSlab       = "slab"
 )
@@ -114,386 +104,386 @@ type Exporter struct {
 	slabsCommands            *prometheus.Desc
 }
 
-// NewExporter returns an initialized exporter.
-func NewExporter(server string, timeout time.Duration, logger log.Logger) *Exporter {
+// New returns an initialized exporter.
+func New(server string, timeout time.Duration, logger log.Logger) *Exporter {
 	return &Exporter{
 		address: server,
 		timeout: timeout,
 		logger:  logger,
 		up: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "up"),
+			prometheus.BuildFQName(Namespace, "", "up"),
 			"Could the memcached server be reached.",
 			nil,
 			nil,
 		),
 		uptime: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "uptime_seconds"),
+			prometheus.BuildFQName(Namespace, "", "uptime_seconds"),
 			"Number of seconds since the server started.",
 			nil,
 			nil,
 		),
 		time: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "time_seconds"),
+			prometheus.BuildFQName(Namespace, "", "time_seconds"),
 			"current UNIX time according to the server.",
 			nil,
 			nil,
 		),
 		version: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "version"),
+			prometheus.BuildFQName(Namespace, "", "version"),
 			"The version of this memcached server.",
 			[]string{"version"},
 			nil,
 		),
 		bytesRead: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "read_bytes_total"),
+			prometheus.BuildFQName(Namespace, "", "read_bytes_total"),
 			"Total number of bytes read by this server from network.",
 			nil,
 			nil,
 		),
 		bytesWritten: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "written_bytes_total"),
+			prometheus.BuildFQName(Namespace, "", "written_bytes_total"),
 			"Total number of bytes sent by this server to network.",
 			nil,
 			nil,
 		),
 		currentConnections: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "current_connections"),
+			prometheus.BuildFQName(Namespace, "", "current_connections"),
 			"Current number of open connections.",
 			nil,
 			nil,
 		),
 		maxConnections: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "max_connections"),
+			prometheus.BuildFQName(Namespace, "", "max_connections"),
 			"Maximum number of clients allowed.",
 			nil,
 			nil,
 		),
 		connectionsTotal: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "connections_total"),
+			prometheus.BuildFQName(Namespace, "", "connections_total"),
 			"Total number of connections opened since the server started running.",
 			nil,
 			nil,
 		),
 		connsYieldedTotal: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "connections_yielded_total"),
+			prometheus.BuildFQName(Namespace, "", "connections_yielded_total"),
 			"Total number of connections yielded running due to hitting the memcached's -R limit.",
 			nil,
 			nil,
 		),
 		listenerDisabledTotal: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "connections_listener_disabled_total"),
+			prometheus.BuildFQName(Namespace, "", "connections_listener_disabled_total"),
 			"Number of times that memcached has hit its connections limit and disabled its listener.",
 			nil,
 			nil,
 		),
 		currentBytes: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "current_bytes"),
+			prometheus.BuildFQName(Namespace, "", "current_bytes"),
 			"Current number of bytes used to store items.",
 			nil,
 			nil,
 		),
 		limitBytes: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "limit_bytes"),
+			prometheus.BuildFQName(Namespace, "", "limit_bytes"),
 			"Number of bytes this server is allowed to use for storage.",
 			nil,
 			nil,
 		),
 		commands: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "commands_total"),
+			prometheus.BuildFQName(Namespace, "", "commands_total"),
 			"Total number of all requests broken down by command (get, set, etc.) and status.",
 			[]string{"command", "status"},
 			nil,
 		),
 		items: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "current_items"),
+			prometheus.BuildFQName(Namespace, "", "current_items"),
 			"Current number of items stored by this instance.",
 			nil,
 			nil,
 		),
 		itemsTotal: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "items_total"),
+			prometheus.BuildFQName(Namespace, "", "items_total"),
 			"Total number of items stored during the life of this instance.",
 			nil,
 			nil,
 		),
 		evictions: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "items_evicted_total"),
+			prometheus.BuildFQName(Namespace, "", "items_evicted_total"),
 			"Total number of valid items removed from cache to free memory for new items.",
 			nil,
 			nil,
 		),
 		reclaimed: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "items_reclaimed_total"),
+			prometheus.BuildFQName(Namespace, "", "items_reclaimed_total"),
 			"Total number of times an entry was stored using memory from an expired entry.",
 			nil,
 			nil,
 		),
 		lruCrawlerEnabled: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemLruCrawler, "enabled"),
+			prometheus.BuildFQName(Namespace, subsystemLruCrawler, "enabled"),
 			"Whether the LRU crawler is enabled.",
 			nil,
 			nil,
 		),
 		lruCrawlerSleep: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemLruCrawler, "sleep"),
+			prometheus.BuildFQName(Namespace, subsystemLruCrawler, "sleep"),
 			"Microseconds to sleep between LRU crawls.",
 			nil,
 			nil,
 		),
 		lruCrawlerMaxItems: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemLruCrawler, "to_crawl"),
+			prometheus.BuildFQName(Namespace, subsystemLruCrawler, "to_crawl"),
 			"Max items to crawl per slab per run.",
 			nil,
 			nil,
 		),
 		lruMaintainerThread: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemLruCrawler, "maintainer_thread"),
+			prometheus.BuildFQName(Namespace, subsystemLruCrawler, "maintainer_thread"),
 			"Split LRU mode and background threads.",
 			nil,
 			nil,
 		),
 		lruHotPercent: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemLruCrawler, "hot_percent"),
+			prometheus.BuildFQName(Namespace, subsystemLruCrawler, "hot_percent"),
 			"Percent of slab memory reserved for HOT LRU.",
 			nil,
 			nil,
 		),
 		lruWarmPercent: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemLruCrawler, "warm_percent"),
+			prometheus.BuildFQName(Namespace, subsystemLruCrawler, "warm_percent"),
 			"Percent of slab memory reserved for WARM LRU.",
 			nil,
 			nil,
 		),
 		lruHotMaxAgeFactor: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemLruCrawler, "hot_max_factor"),
+			prometheus.BuildFQName(Namespace, subsystemLruCrawler, "hot_max_factor"),
 			"Set idle age of HOT LRU to COLD age * this",
 			nil,
 			nil,
 		),
 		lruWarmMaxAgeFactor: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemLruCrawler, "warm_max_factor"),
+			prometheus.BuildFQName(Namespace, subsystemLruCrawler, "warm_max_factor"),
 			"Set idle age of WARM LRU to COLD age * this",
 			nil,
 			nil,
 		),
 		lruCrawlerStarts: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemLruCrawler, "starts_total"),
+			prometheus.BuildFQName(Namespace, subsystemLruCrawler, "starts_total"),
 			"Times an LRU crawler was started.",
 			nil,
 			nil,
 		),
 		lruCrawlerReclaimed: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemLruCrawler, "reclaimed_total"),
+			prometheus.BuildFQName(Namespace, subsystemLruCrawler, "reclaimed_total"),
 			"Total items freed by LRU Crawler.",
 			nil,
 			nil,
 		),
 		lruCrawlerItemsChecked: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemLruCrawler, "items_checked_total"),
+			prometheus.BuildFQName(Namespace, subsystemLruCrawler, "items_checked_total"),
 			"Total items examined by LRU Crawler.",
 			nil,
 			nil,
 		),
 		lruCrawlerMovesToCold: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemLruCrawler, "moves_to_cold_total"),
+			prometheus.BuildFQName(Namespace, subsystemLruCrawler, "moves_to_cold_total"),
 			"Total number of items moved from HOT/WARM to COLD LRU's.",
 			nil,
 			nil,
 		),
 		lruCrawlerMovesToWarm: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemLruCrawler, "moves_to_warm_total"),
+			prometheus.BuildFQName(Namespace, subsystemLruCrawler, "moves_to_warm_total"),
 			"Total number of items moved from COLD to WARM LRU.",
 			nil,
 			nil,
 		),
 		lruCrawlerMovesWithinLru: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemLruCrawler, "moves_within_lru_total"),
+			prometheus.BuildFQName(Namespace, subsystemLruCrawler, "moves_within_lru_total"),
 			"Total number of items reshuffled within HOT or WARM LRU's.",
 			nil,
 			nil,
 		),
 		malloced: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "malloced_bytes"),
+			prometheus.BuildFQName(Namespace, "", "malloced_bytes"),
 			"Number of bytes of memory allocated to slab pages.",
 			nil,
 			nil,
 		),
 		itemsNumber: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemSlab, "current_items"),
+			prometheus.BuildFQName(Namespace, subsystemSlab, "current_items"),
 			"Number of items currently stored in this slab class.",
 			[]string{"slab"},
 			nil,
 		),
 		itemsAge: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemSlab, "items_age_seconds"),
+			prometheus.BuildFQName(Namespace, subsystemSlab, "items_age_seconds"),
 			"Number of seconds the oldest item has been in the slab class.",
 			[]string{"slab"},
 			nil,
 		),
 		itemsCrawlerReclaimed: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemSlab, "items_crawler_reclaimed_total"),
+			prometheus.BuildFQName(Namespace, subsystemSlab, "items_crawler_reclaimed_total"),
 			"Number of items freed by the LRU Crawler.",
 			[]string{"slab"},
 			nil,
 		),
 		itemsEvicted: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemSlab, "items_evicted_total"),
+			prometheus.BuildFQName(Namespace, subsystemSlab, "items_evicted_total"),
 			"Total number of times an item had to be evicted from the LRU before it expired.",
 			[]string{"slab"},
 			nil,
 		),
 		itemsEvictedNonzero: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemSlab, "items_evicted_nonzero_total"),
+			prometheus.BuildFQName(Namespace, subsystemSlab, "items_evicted_nonzero_total"),
 			"Total number of times an item which had an explicit expire time set had to be evicted from the LRU before it expired.",
 			[]string{"slab"},
 			nil,
 		),
 		itemsEvictedTime: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemSlab, "items_evicted_time_seconds"),
+			prometheus.BuildFQName(Namespace, subsystemSlab, "items_evicted_time_seconds"),
 			"Seconds since the last access for the most recent item evicted from this class.",
 			[]string{"slab"},
 			nil,
 		),
 		itemsEvictedUnfetched: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemSlab, "items_evicted_unfetched_total"),
+			prometheus.BuildFQName(Namespace, subsystemSlab, "items_evicted_unfetched_total"),
 			"Total nmber of items evicted and never fetched.",
 			[]string{"slab"},
 			nil,
 		),
 		itemsExpiredUnfetched: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemSlab, "items_expired_unfetched_total"),
+			prometheus.BuildFQName(Namespace, subsystemSlab, "items_expired_unfetched_total"),
 			"Total number of valid items evicted from the LRU which were never touched after being set.",
 			[]string{"slab"},
 			nil,
 		),
 		itemsOutofmemory: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemSlab, "items_outofmemory_total"),
+			prometheus.BuildFQName(Namespace, subsystemSlab, "items_outofmemory_total"),
 			"Total number of items for this slab class that have triggered an out of memory error.",
 			[]string{"slab"},
 			nil,
 		),
 		itemsReclaimed: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemSlab, "items_reclaimed_total"),
+			prometheus.BuildFQName(Namespace, subsystemSlab, "items_reclaimed_total"),
 			"Total number of items reclaimed.",
 			[]string{"slab"},
 			nil,
 		),
 		itemsTailrepairs: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemSlab, "items_tailrepairs_total"),
+			prometheus.BuildFQName(Namespace, subsystemSlab, "items_tailrepairs_total"),
 			"Total number of times the entries for a particular ID need repairing.",
 			[]string{"slab"},
 			nil,
 		),
 		itemsMovesToCold: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemSlab, "items_moves_to_cold"),
+			prometheus.BuildFQName(Namespace, subsystemSlab, "items_moves_to_cold"),
 			"Number of items moved from HOT or WARM into COLD.",
 			[]string{"slab"},
 			nil,
 		),
 		itemsMovesToWarm: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemSlab, "items_moves_to_warm"),
+			prometheus.BuildFQName(Namespace, subsystemSlab, "items_moves_to_warm"),
 			"Number of items moves from COLD into WARM.",
 			[]string{"slab"},
 			nil,
 		),
 		itemsMovesWithinLru: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemSlab, "items_moves_within_lru"),
+			prometheus.BuildFQName(Namespace, subsystemSlab, "items_moves_within_lru"),
 			"Number of times active items were bumped within HOT or WARM.",
 			[]string{"slab"},
 			nil,
 		),
 		itemsHot: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemSlab, "hot_items"),
+			prometheus.BuildFQName(Namespace, subsystemSlab, "hot_items"),
 			"Number of items presently stored in the HOT LRU.",
 			[]string{"slab"},
 			nil,
 		),
 		itemsWarm: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemSlab, "warm_items"),
+			prometheus.BuildFQName(Namespace, subsystemSlab, "warm_items"),
 			"Number of items presently stored in the WARM LRU.",
 			[]string{"slab"},
 			nil,
 		),
 		itemsCold: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemSlab, "cold_items"),
+			prometheus.BuildFQName(Namespace, subsystemSlab, "cold_items"),
 			"Number of items presently stored in the COLD LRU.",
 			[]string{"slab"},
 			nil,
 		),
 		itemsTemporary: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemSlab, "temporary_items"),
+			prometheus.BuildFQName(Namespace, subsystemSlab, "temporary_items"),
 			"Number of items presently stored in the TEMPORARY LRU.",
 			[]string{"slab"},
 			nil,
 		),
 		itemsAgeOldestHot: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemSlab, "hot_age_seconds"),
+			prometheus.BuildFQName(Namespace, subsystemSlab, "hot_age_seconds"),
 			"Age of the oldest item in HOT LRU.",
 			[]string{"slab"},
 			nil,
 		),
 		itemsAgeOldestWarm: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemSlab, "warm_age_seconds"),
+			prometheus.BuildFQName(Namespace, subsystemSlab, "warm_age_seconds"),
 			"Age of the oldest item in HOT LRU.",
 			[]string{"slab"},
 			nil,
 		),
 		itemsLruHits: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemSlab, "lru_hits_total"),
+			prometheus.BuildFQName(Namespace, subsystemSlab, "lru_hits_total"),
 			"Number of get_hits to the LRU.",
 			[]string{"slab", "lru"},
 			nil,
 		),
 		slabsChunkSize: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemSlab, "chunk_size_bytes"),
+			prometheus.BuildFQName(Namespace, subsystemSlab, "chunk_size_bytes"),
 			"Number of bytes allocated to each chunk within this slab class.",
 			[]string{"slab"},
 			nil,
 		),
 		slabsChunksPerPage: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemSlab, "chunks_per_page"),
+			prometheus.BuildFQName(Namespace, subsystemSlab, "chunks_per_page"),
 			"Number of chunks within a single page for this slab class.",
 			[]string{"slab"},
 			nil,
 		),
 		slabsCurrentPages: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemSlab, "current_pages"),
+			prometheus.BuildFQName(Namespace, subsystemSlab, "current_pages"),
 			"Number of pages allocated to this slab class.",
 			[]string{"slab"},
 			nil,
 		),
 		slabsCurrentChunks: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemSlab, "current_chunks"),
+			prometheus.BuildFQName(Namespace, subsystemSlab, "current_chunks"),
 			"Number of chunks allocated to this slab class.",
 			[]string{"slab"},
 			nil,
 		),
 		slabsChunksUsed: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemSlab, "chunks_used"),
+			prometheus.BuildFQName(Namespace, subsystemSlab, "chunks_used"),
 			"Number of chunks allocated to an item.",
 			[]string{"slab"},
 			nil,
 		),
 		slabsChunksFree: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemSlab, "chunks_free"),
+			prometheus.BuildFQName(Namespace, subsystemSlab, "chunks_free"),
 			"Number of chunks not yet allocated items.",
 			[]string{"slab"},
 			nil,
 		),
 		slabsChunksFreeEnd: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemSlab, "chunks_free_end"),
+			prometheus.BuildFQName(Namespace, subsystemSlab, "chunks_free_end"),
 			"Number of free chunks at the end of the last allocated page.",
 			[]string{"slab"},
 			nil,
 		),
 		slabsMemRequested: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemSlab, "mem_requested_bytes"),
+			prometheus.BuildFQName(Namespace, subsystemSlab, "mem_requested_bytes"),
 			"Number of bytes of memory actual items take up within a slab.",
 			[]string{"slab"},
 			nil,
 		),
 		slabsCommands: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystemSlab, "commands_total"),
+			prometheus.BuildFQName(Namespace, subsystemSlab, "commands_total"),
 			"Total number of all requests broken down by command (get, set, etc.) and status per slab.",
 			[]string{"slab", "command", "status"},
 			nil,
@@ -870,60 +860,4 @@ func firstError(errors ...error) error {
 		}
 	}
 	return nil
-}
-
-func main() {
-	var (
-		address       = kingpin.Flag("memcached.address", "Memcached server address.").Default("localhost:11211").String()
-		timeout       = kingpin.Flag("memcached.timeout", "memcached connect timeout.").Default("1s").Duration()
-		pidFile       = kingpin.Flag("memcached.pid-file", "Optional path to a file containing the memcached PID for additional metrics.").Default("").String()
-		listenAddress = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9150").String()
-		metricsPath   = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
-	)
-	promlogConfig := &promlog.Config{}
-	flag.AddFlags(kingpin.CommandLine, promlogConfig)
-	kingpin.HelpFlag.Short('h')
-	kingpin.Version(version.Print("memcached_exporter"))
-	kingpin.Parse()
-	logger := promlog.New(promlogConfig)
-
-	level.Info(logger).Log("msg", "Starting memcached_exporter", "version", version.Info())
-	level.Info(logger).Log("msg", "Build context", "context", version.BuildContext())
-
-	prometheus.MustRegister(version.NewCollector("memcached_exporter"))
-	prometheus.MustRegister(NewExporter(*address, *timeout, logger))
-	if *pidFile != "" {
-		procExporter := prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{
-			PidFn: func() (int, error) {
-				content, err := ioutil.ReadFile(*pidFile)
-				if err != nil {
-					return 0, fmt.Errorf("can't read pid file %q: %s", *pidFile, err)
-				}
-				value, err := strconv.Atoi(strings.TrimSpace(string(content)))
-				if err != nil {
-					return 0, fmt.Errorf("can't parse pid file %q: %s", *pidFile, err)
-				}
-				return value, nil
-			},
-			Namespace: namespace,
-		})
-		prometheus.MustRegister(procExporter)
-	}
-
-	http.Handle(*metricsPath, promhttp.Handler())
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`<html>
-             <head><title>Memcached Exporter</title></head>
-             <body>
-             <h1>Memcached Exporter</h1>
-             <p><a href='` + *metricsPath + `'>Metrics</a></p>
-             </body>
-             </html>`))
-	})
-
-	level.Info(logger).Log("msg", "Listening on address", "address", *listenAddress)
-	if err := http.ListenAndServe(*listenAddress, nil); err != nil {
-		level.Error(logger).Log("msg", "Error running HTTP server", "err", err)
-		os.Exit(1)
-	}
 }
