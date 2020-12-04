@@ -1,3 +1,10 @@
+## 0.8.0 / 2020-12-04
+
+* [FEATURE] Support MySQL's InnoDB memcached plugin (by handling their multi-word stats settings values)
+* [FEATURE] Make exporter logic available as standalone library package #97
+* [ENHANCEMENT] Add --version flag and version metric #99
+* [ENHANCEMENT] Update prometheus client library
+
 ## 0.7.0 / 2020-07-24
 
 * [CHANGE] Switch logging to go-kit #73
