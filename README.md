@@ -175,6 +175,14 @@ memcached process, then the following metrics will be exported additionally.
 # TYPE memcached_process_virtual_memory_bytes gauge
 ```
 
+## TLS and basic authentication
+
+The Memcached Exporter supports TLS and basic authentication.
+
+To use TLS and/or basic authentication, you need to pass a configuration file
+using the `--web.config.file` parameter. The format of the file is described
+[in the exporter-toolkit repository](https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md).
+
 [buildstatus]: https://circleci.com/gh/prometheus/memcached_exporter/tree/master.svg?style=shield
 [circleci]: https://circleci.com/gh/prometheus/memcached_exporter
 [hub]: https://hub.docker.com/r/prom/memcached-exporter/
