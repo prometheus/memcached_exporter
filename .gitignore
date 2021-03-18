@@ -3,3 +3,4 @@
 /.tarballs
 /memcached_exporter
 *.tar.gz
+/vendor
