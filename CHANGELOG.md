@@ -1,3 +1,7 @@
+## 0.9.0 / 2021-03-25
+
+* [FEATURE] Add TLS and basic authentication #101
+
 ## 0.8.0 / 2020-12-04
 
 * [FEATURE] Support MySQL's InnoDB memcached plugin (by handling their multi-word stats settings values)
