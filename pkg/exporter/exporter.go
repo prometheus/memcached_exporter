@@ -181,7 +181,7 @@ func New(server string, timeout time.Duration, logger log.Logger) *Exporter {
 			nil,
 		),
 		rejectedConnections: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, "", "rejected_connections"),
+			prometheus.BuildFQName(Namespace, "", "rejected_connections_total"),
 			"Conns rejected in maxconns_fast mode.",
 			nil,
 			nil,
@@ -684,8 +684,8 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 		}
 
 		err = firstError(
-			e.parseTimevalAndNewMetric(ch, e.rusageUser, prometheus.GaugeValue, s, "rusage_user"),
-			e.parseTimevalAndNewMetric(ch, e.rusageSystem, prometheus.GaugeValue, s, "rusage_system"),
+			e.parseTimevalAndNewMetric(ch, e.rusageUser, prometheus.CounterValue, s, "rusage_user"),
+			e.parseTimevalAndNewMetric(ch, e.rusageSystem, prometheus.CounterValue, s, "rusage_system"),
 			e.parseAndNewMetric(ch, e.currentBytes, prometheus.GaugeValue, s, "bytes"),
 			e.parseAndNewMetric(ch, e.limitBytes, prometheus.GaugeValue, s, "limit_maxbytes"),
 			e.parseAndNewMetric(ch, e.items, prometheus.GaugeValue, s, "curr_items"),
