@@ -139,13 +139,13 @@ func New(server string, timeout time.Duration, logger log.Logger) *Exporter {
 			nil,
 		),
 		rusageUser: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, "", "rusage_user"),
+			prometheus.BuildFQName(Namespace, "", "process_user_cpu_seconds_total"),
 			"Accumulated user time for this process.",
 			nil,
 			nil,
 		),
 		rusageSystem: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, "", "rusage_system"),
+			prometheus.BuildFQName(Namespace, "", "process_system_cpu_seconds_total"),
 			"Accumulated system time for this process.",
 			nil,
 			nil,
