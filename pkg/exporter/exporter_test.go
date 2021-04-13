@@ -73,3 +73,21 @@ func TestParseStatsSettings(t *testing.T) {
 		}
 	})
 }
+
+func TestParseTimeval(t *testing.T) {
+	t.Run("Success", func(t *testing.T) {
+		t.Parallel()
+		_, err := parseTimeval(map[string]string{"rusage_system": "3.5"}, "rusage_system", log.NewNopLogger())
+		if err != nil {
+			t.Errorf("expect return error, error: %v", err)
+		}
+	})
+
+	t.Run("Failure", func(t *testing.T) {
+		t.Parallel()
+		_, err := parseTimeval(map[string]string{"rusage_system": "35"}, "rusage_system", log.NewNopLogger())
+		if err == nil {
+			t.Error("expect return error but not")
+		}
+	})
+}

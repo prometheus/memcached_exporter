@@ -17,6 +17,7 @@ import (
 	"errors"
 	"net"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-kit/kit/log"
@@ -43,11 +44,14 @@ type Exporter struct {
 	uptime                   *prometheus.Desc
 	time                     *prometheus.Desc
 	version                  *prometheus.Desc
+	rusageUser               *prometheus.Desc
+	rusageSystem             *prometheus.Desc
 	bytesRead                *prometheus.Desc
 	bytesWritten             *prometheus.Desc
 	currentConnections       *prometheus.Desc
 	maxConnections           *prometheus.Desc
 	connectionsTotal         *prometheus.Desc
+	rejectedConnections      *prometheus.Desc
 	connsYieldedTotal        *prometheus.Desc
 	listenerDisabledTotal    *prometheus.Desc
 	currentBytes             *prometheus.Desc
@@ -134,6 +138,18 @@ func New(server string, timeout time.Duration, logger log.Logger) *Exporter {
 			[]string{"version"},
 			nil,
 		),
+		rusageUser: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "process_user_cpu_seconds_total"),
+			"Accumulated user time for this process.",
+			nil,
+			nil,
+		),
+		rusageSystem: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "process_system_cpu_seconds_total"),
+			"Accumulated system time for this process.",
+			nil,
+			nil,
+		),
 		bytesRead: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, "", "read_bytes_total"),
 			"Total number of bytes read by this server from network.",
@@ -161,6 +177,12 @@ func New(server string, timeout time.Duration, logger log.Logger) *Exporter {
 		connectionsTotal: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, "", "connections_total"),
 			"Total number of connections opened since the server started running.",
+			nil,
+			nil,
+		),
+		rejectedConnections: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "connections_rejected_total"),
+			"Total number of connections rejected due to hitting the memcached's -c limit in maxconns_fast mode.",
 			nil,
 			nil,
 		),
@@ -498,11 +520,14 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.uptime
 	ch <- e.time
 	ch <- e.version
+	ch <- e.rusageUser
+	ch <- e.rusageSystem
 	ch <- e.bytesRead
 	ch <- e.bytesWritten
 	ch <- e.currentConnections
 	ch <- e.maxConnections
 	ch <- e.connectionsTotal
+	ch <- e.rejectedConnections
 	ch <- e.connsYieldedTotal
 	ch <- e.listenerDisabledTotal
 	ch <- e.currentBytes
@@ -659,6 +684,8 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 		}
 
 		err = firstError(
+			e.parseTimevalAndNewMetric(ch, e.rusageUser, prometheus.CounterValue, s, "rusage_user"),
+			e.parseTimevalAndNewMetric(ch, e.rusageSystem, prometheus.CounterValue, s, "rusage_system"),
 			e.parseAndNewMetric(ch, e.currentBytes, prometheus.GaugeValue, s, "bytes"),
 			e.parseAndNewMetric(ch, e.limitBytes, prometheus.GaugeValue, s, "limit_maxbytes"),
 			e.parseAndNewMetric(ch, e.items, prometheus.GaugeValue, s, "curr_items"),
@@ -667,6 +694,7 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 			e.parseAndNewMetric(ch, e.bytesWritten, prometheus.CounterValue, s, "bytes_written"),
 			e.parseAndNewMetric(ch, e.currentConnections, prometheus.GaugeValue, s, "curr_connections"),
 			e.parseAndNewMetric(ch, e.connectionsTotal, prometheus.CounterValue, s, "total_connections"),
+			e.parseAndNewMetric(ch, e.rejectedConnections, prometheus.CounterValue, s, "rejected_connections"),
 			e.parseAndNewMetric(ch, e.connsYieldedTotal, prometheus.CounterValue, s, "conn_yields"),
 			e.parseAndNewMetric(ch, e.listenerDisabledTotal, prometheus.CounterValue, s, "listen_disabled_num"),
 			e.parseAndNewMetric(ch, e.evictions, prometheus.CounterValue, s, "evictions"),
@@ -792,6 +820,10 @@ func (e *Exporter) parseBoolAndNewMetric(ch chan<- prometheus.Metric, desc *prom
 	return e.extractValueAndNewMetric(ch, desc, valueType, parseBool, stats, key, labelValues...)
 }
 
+func (e *Exporter) parseTimevalAndNewMetric(ch chan<- prometheus.Metric, desc *prometheus.Desc, valueType prometheus.ValueType, stats map[string]string, key string, labelValues ...string) error {
+	return e.extractValueAndNewMetric(ch, desc, valueType, parseTimeval, stats, key, labelValues...)
+}
+
 func (e *Exporter) extractValueAndNewMetric(ch chan<- prometheus.Metric, desc *prometheus.Desc, valueType prometheus.ValueType, f func(map[string]string, string, log.Logger) (float64, error), stats map[string]string, key string, labelValues ...string) error {
 	v, err := f(stats, key, e.logger)
 	if err == errKeyNotFound {
@@ -836,6 +868,34 @@ func parseBool(stats map[string]string, key string, logger log.Logger) (float64,
 		level.Error(logger).Log("msg", "Failed to parse", "key", key, "value", value)
 		return 0, errors.New("failed parse a bool value")
 	}
+}
+
+func parseTimeval(stats map[string]string, key string, logger log.Logger) (float64, error) {
+	value, ok := stats[key]
+	if !ok {
+		level.Debug(logger).Log("msg", "Key not found", "key", key)
+		return 0, errKeyNotFound
+	}
+	values := strings.Split(value, ".")
+
+	if len(values) != 2 {
+		level.Error(logger).Log("msg", "Failed to parse", "key", key, "value", value)
+		return 0, errors.New("failed parse a timeval value")
+	}
+
+	seconds, err := strconv.ParseFloat(values[0], 64)
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to parse", "key", key, "value", value, "err", err)
+		return 0, errors.New("failed parse a timeval value")
+	}
+
+	microseconds, err := strconv.ParseFloat(values[1], 64)
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to parse", "key", key, "value", value, "err", err)
+		return 0, errors.New("failed parse a timeval value")
+	}
+
+	return (seconds + microseconds/(1000.0*1000.0)), nil
 }
 
 func sum(stats map[string]string, keys ...string) (float64, error) {
