@@ -181,8 +181,8 @@ func New(server string, timeout time.Duration, logger log.Logger) *Exporter {
 			nil,
 		),
 		rejectedConnections: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, "", "rejected_connections_total"),
-			"Conns rejected in maxconns_fast mode.",
+			prometheus.BuildFQName(Namespace, "", "connections_rejected_total"),
+			"Total number of connections rejected due to hitting the memcached's -c limit in maxconns_fast mode.",
 			nil,
 			nil,
 		),
