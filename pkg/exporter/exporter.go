@@ -106,6 +106,24 @@ type Exporter struct {
 	slabsChunksFreeEnd       *prometheus.Desc
 	slabsMemRequested        *prometheus.Desc
 	slabsCommands            *prometheus.Desc
+	extstoreCompactLost      *prometheus.Desc
+	extstoreCompactRescues   *prometheus.Desc
+	extstoreCompactSkipped   *prometheus.Desc
+	extstorePageAllocs       *prometheus.Desc
+	extstorePageEvictions    *prometheus.Desc
+	extstorePageReclaims     *prometheus.Desc
+	extstorePagesFree        *prometheus.Desc
+	extstorePagesUsed        *prometheus.Desc
+	extstoreObjectsEvicted   *prometheus.Desc
+	extstoreObjectsRead      *prometheus.Desc
+	extstoreObjectsWritten   *prometheus.Desc
+	extstoreObjectsUsed      *prometheus.Desc
+	extstoreBytesEvicted     *prometheus.Desc
+	extstoreBytesWritten     *prometheus.Desc
+	extstoreBytesRead        *prometheus.Desc
+	extstoreBytesUsed        *prometheus.Desc
+	extstoreBytesLimit       *prometheus.Desc
+	extstoreBytesFragmented  *prometheus.Desc
 }
 
 // New returns an initialized exporter.
@@ -510,6 +528,114 @@ func New(server string, timeout time.Duration, logger log.Logger) *Exporter {
 			[]string{"slab", "command", "status"},
 			nil,
 		),
+		extstoreCompactLost: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "extstore_compact_lost_total"),
+			"Total number of items lost because they were locked during extstore compaction.",
+			nil,
+			nil,
+		),
+		extstoreCompactRescues: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "extstore_compact_rescued_total"),
+			"Total number of items moved to a new page during extstore compaction,",
+			nil,
+			nil,
+		),
+		extstoreCompactSkipped: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "extstore_compact_skipped_total"),
+			"Total number of items dropped due to inactivity during extstore compaction.",
+			nil,
+			nil,
+		),
+		extstorePageAllocs: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "extstore_pages_allocated_total"),
+			"Total number of times a page was allocated in extstore.",
+			nil,
+			nil,
+		),
+		extstorePageEvictions: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "extstore_pages_evicted_total"),
+			"Total number of times a page was evicted from extstore.",
+			nil,
+			nil,
+		),
+		extstorePageReclaims: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "extstore_pages_reclaimed_total"),
+			"Total number of times an empty extstore page was freed.",
+			nil,
+			nil,
+		),
+		extstorePagesFree: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "extstore_pages_free"),
+			"Number of extstore pages not yet containing any items.",
+			nil,
+			nil,
+		),
+		extstorePagesUsed: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "extstore_pages_used"),
+			"Number of extstore pages containing at least one item.",
+			nil,
+			nil,
+		),
+		extstoreObjectsEvicted: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "extstore_objects_evicted_total"),
+			"Total number of items evicted from extstore to free up space.",
+			nil,
+			nil,
+		),
+		extstoreObjectsRead: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "extstore_objects_read_total"),
+			"Total number of items read from extstore.",
+			nil,
+			nil,
+		),
+		extstoreObjectsWritten: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "extstore_objects_written_total"),
+			"Total number of items written to extstore.",
+			nil,
+			nil,
+		),
+		extstoreObjectsUsed: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "extstore_objects_used"),
+			"Number of items stored in extstore.",
+			nil,
+			nil,
+		),
+		extstoreBytesEvicted: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "extstore_bytes_evicted_total"),
+			"Total number of bytes evicted from extstore to free up space.",
+			nil,
+			nil,
+		),
+		extstoreBytesWritten: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "extstore_bytes_written_total"),
+			"Total number of bytes written to extstore.",
+			nil,
+			nil,
+		),
+		extstoreBytesRead: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "extstore_bytes_read_total"),
+			"Total number of bytes read from extstore.",
+			nil,
+			nil,
+		),
+		extstoreBytesUsed: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "extstore_bytes_used"),
+			"Current number of bytes used to store items in extstore.",
+			nil,
+			nil,
+		),
+		extstoreBytesFragmented: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "extstore_bytes_fragmented"),
+			"Current number of bytes in extstore pages allocated but not used to store an object.",
+			nil,
+			nil,
+		),
+		extstoreBytesLimit: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "extstore_bytes_limit"),
+			"Number of bytes of external storage allocated for this server.",
+			nil,
+			nil,
+		),
 	}
 }
 
@@ -583,6 +709,24 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.slabsChunksFreeEnd
 	ch <- e.slabsMemRequested
 	ch <- e.slabsCommands
+	ch <- e.extstoreCompactLost
+	ch <- e.extstoreCompactRescues
+	ch <- e.extstoreCompactSkipped
+	ch <- e.extstorePageAllocs
+	ch <- e.extstorePageEvictions
+	ch <- e.extstorePageReclaims
+	ch <- e.extstorePagesFree
+	ch <- e.extstorePagesUsed
+	ch <- e.extstoreObjectsEvicted
+	ch <- e.extstoreObjectsRead
+	ch <- e.extstoreObjectsWritten
+	ch <- e.extstoreObjectsUsed
+	ch <- e.extstoreBytesEvicted
+	ch <- e.extstoreBytesWritten
+	ch <- e.extstoreBytesRead
+	ch <- e.extstoreBytesUsed
+	ch <- e.extstoreBytesFragmented
+	ch <- e.extstoreBytesLimit
 }
 
 // Collect fetches the statistics from the configured memcached server, and
@@ -681,6 +825,33 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 		} else {
 			level.Error(e.logger).Log("msg", "Failed to parse set", "err", err)
 			parseError = err
+		}
+
+		// extstore stats are only included if extstore is actually active. Take the presence of the
+		// maxbytes key as a signal that they all should be there and do the parsing
+		if _, ok := s["extstore_limit_maxbytes"]; ok {
+			err = firstError(
+				e.parseAndNewMetric(ch, e.extstoreCompactLost, prometheus.CounterValue, s, "extstore_compact_lost"),
+				e.parseAndNewMetric(ch, e.extstoreCompactRescues, prometheus.CounterValue, s, "extstore_compact_rescues"),
+				e.parseAndNewMetric(ch, e.extstoreCompactSkipped, prometheus.CounterValue, s, "extstore_compact_skipped"),
+				e.parseAndNewMetric(ch, e.extstorePageAllocs, prometheus.CounterValue, s, "extstore_page_allocs"),
+				e.parseAndNewMetric(ch, e.extstorePageEvictions, prometheus.CounterValue, s, "extstore_page_evictions"),
+				e.parseAndNewMetric(ch, e.extstorePageReclaims, prometheus.CounterValue, s, "extstore_page_reclaims"),
+				e.parseAndNewMetric(ch, e.extstorePagesUsed, prometheus.GaugeValue, s, "extstore_pages_used"),
+				e.parseAndNewMetric(ch, e.extstoreObjectsEvicted, prometheus.CounterValue, s, "extstore_objects_evicted"),
+				e.parseAndNewMetric(ch, e.extstoreObjectsRead, prometheus.CounterValue, s, "extstore_objects_read"),
+				e.parseAndNewMetric(ch, e.extstoreObjectsWritten, prometheus.CounterValue, s, "extstore_objects_written"),
+				e.parseAndNewMetric(ch, e.extstoreObjectsUsed, prometheus.GaugeValue, s, "extstore_objects_used"),
+				e.parseAndNewMetric(ch, e.extstoreBytesEvicted, prometheus.CounterValue, s, "extstore_bytes_evicted"),
+				e.parseAndNewMetric(ch, e.extstoreBytesWritten, prometheus.CounterValue, s, "extstore_bytes_written"),
+				e.parseAndNewMetric(ch, e.extstoreBytesRead, prometheus.CounterValue, s, "extstore_bytes_read"),
+				e.parseAndNewMetric(ch, e.extstoreBytesUsed, prometheus.CounterValue, s, "extstore_bytes_used"),
+				e.parseAndNewMetric(ch, e.extstoreBytesFragmented, prometheus.GaugeValue, s, "extstore_bytes_fragmented"),
+				e.parseAndNewMetric(ch, e.extstoreBytesLimit, prometheus.GaugeValue, s, "extstore_limit_maxbytes"),
+			)
+			if err != nil {
+				parseError = err
+			}
 		}
 
 		err = firstError(
