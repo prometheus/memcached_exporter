@@ -14,15 +14,12 @@
 package main
 
 import (
-	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
-	"strconv"
-	"strings"
 
-	"github.com/go-kit/kit/log/level"
+	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/promlog"
 	"github.com/prometheus/common/promlog/flag"
@@ -57,18 +54,8 @@ func main() {
 	prometheus.MustRegister(exporter.New(*address, *timeout, logger))
 
 	if *pidFile != "" {
-		procExporter := prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{
-			PidFn: func() (int, error) {
-				content, err := ioutil.ReadFile(*pidFile)
-				if err != nil {
-					return 0, fmt.Errorf("can't read pid file %q: %s", *pidFile, err)
-				}
-				value, err := strconv.Atoi(strings.TrimSpace(string(content)))
-				if err != nil {
-					return 0, fmt.Errorf("can't parse pid file %q: %s", *pidFile, err)
-				}
-				return value, nil
-			},
+		procExporter := collectors.NewProcessCollector(collectors.ProcessCollectorOpts{
+			PidFn:     prometheus.NewPidFileFn(*pidFile),
 			Namespace: exporter.Namespace,
 		})
 		prometheus.MustRegister(procExporter)
