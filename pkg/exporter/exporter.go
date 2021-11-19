@@ -14,6 +14,7 @@
 package exporter
 
 import (
+	"crypto/tls"
 	"errors"
 	"net"
 	"strconv"
@@ -36,9 +37,10 @@ var errKeyNotFound = errors.New("key not found")
 
 // Exporter collects metrics from a memcached server.
 type Exporter struct {
-	address string
-	timeout time.Duration
-	logger  log.Logger
+	address   string
+	timeout   time.Duration
+	logger    log.Logger
+	tlsConfig *tls.Config
 
 	up                       *prometheus.Desc
 	uptime                   *prometheus.Desc
@@ -109,11 +111,12 @@ type Exporter struct {
 }
 
 // New returns an initialized exporter.
-func New(server string, timeout time.Duration, logger log.Logger) *Exporter {
+func New(server string, timeout time.Duration, logger log.Logger, tlsConfig *tls.Config) *Exporter {
 	return &Exporter{
-		address: server,
-		timeout: timeout,
-		logger:  logger,
+		address:   server,
+		timeout:   timeout,
+		logger:    logger,
+		tlsConfig: tlsConfig,
 		up: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, "", "up"),
 			"Could the memcached server be reached.",
@@ -595,6 +598,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 	c.Timeout = e.timeout
+	c.TlsConfig = e.tlsConfig
 
 	up := float64(1)
 	stats, err := c.Stats()
