@@ -1,12 +1,17 @@
-ARG ARCH="amd64"
-ARG OS="linux"
-FROM quay.io/prometheus/busybox-${OS}-${ARCH}:latest
-LABEL maintainer="The Prometheus Authors <prometheus-developers@googlegroups.com>"
+FROM golang:alpine as build-env
 
-ARG ARCH="amd64"
-ARG OS="linux"
-COPY .build/${OS}-${ARCH}/memcached_exporter /bin/memcached_exporter
+RUN apk add git
 
-USER       nobody
-ENTRYPOINT ["/bin/memcached_exporter"]
-EXPOSE     9150
+# Copy source + vendor
+COPY . /go/src/github.com/messagebird/beanstalkd_exporter
+WORKDIR /go/src/github.com/messagebird/beanstalkd_exporter
+
+# Build
+ENV GOPATH=/go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=off go build -v -a -ldflags "-s -w" -o /go/bin/beanstalkd_exporter .
+
+FROM scratch
+COPY examples/ /etc/beanstalkd_exporter/
+COPY --from=build-env /go/bin/beanstalkd_exporter /usr/bin/beanstalkd_exporter
+ENTRYPOINT ["beansdb_exporter"]
+CMD ["-beansdb.address", "localhost:11211"]

@@ -23,7 +23,7 @@ jobs:
     - setup_remote_docker
     - run: make
     - prometheus/store_artifact:
-        file: memcached_exporter
+        file: beansdb_exporter
     - run: git diff --exit-code
 
 workflows:

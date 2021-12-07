@@ -3,11 +3,11 @@ go:
     # be updated.
     version: 1.17
 repository:
-    path: github.com/prometheus/memcached_exporter
+    path: github.com/prometheus/beansdb_exporter
 build:
     binaries:
-      - name: memcached_exporter
-        path: ./cmd/memcached_exporter
+      - name: beansdb_exporter
+        path: ./cmd/beansdb_exporter
     flags: -a -tags netgo
     ldflags: |
         -X github.com/prometheus/common/version.Version={{.Version}}

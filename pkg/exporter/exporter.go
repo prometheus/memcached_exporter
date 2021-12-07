@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	Namespace           = "memcached"
+	Namespace           = "beansdb"
 	subsystemLruCrawler = "lru_crawler"
 	subsystemSlab       = "slab"
 )
@@ -106,6 +106,9 @@ type Exporter struct {
 	slabsChunksFreeEnd       *prometheus.Desc
 	slabsMemRequested        *prometheus.Desc
 	slabsCommands            *prometheus.Desc
+	cmdSet                   *prometheus.Desc
+	cmdGet                   *prometheus.Desc
+	slowCmd                  *prometheus.Desc
 }
 
 // New returns an initialized exporter.
@@ -510,6 +513,18 @@ func New(server string, timeout time.Duration, logger log.Logger) *Exporter {
 			[]string{"slab", "command", "status"},
 			nil,
 		),
+		cmdSet: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "cmd_set"),
+			"Total number of all set requests", nil, nil,
+		),
+		cmdGet: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "cmd_get"),
+			"Total number of all get requests", nil, nil,
+		),
+		slowCmd: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "slow_cmd"),
+			"Total number of all slow requests", nil, nil,
+		),
 	}
 }
 
@@ -650,7 +665,7 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 		s := t.Stats
 		ch <- prometheus.MustNewConstMetric(e.version, prometheus.GaugeValue, 1, s["version"])
 
-		for _, op := range []string{"get", "delete", "incr", "decr", "cas", "touch"} {
+		for _, op := range []string{"get"} {
 			err := firstError(
 				e.parseAndNewMetric(ch, e.commands, prometheus.CounterValue, s, op+"_hits", op, "hit"),
 				e.parseAndNewMetric(ch, e.commands, prometheus.CounterValue, s, op+"_misses", op, "miss"),
@@ -662,50 +677,23 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 		err := firstError(
 			e.parseAndNewMetric(ch, e.uptime, prometheus.CounterValue, s, "uptime"),
 			e.parseAndNewMetric(ch, e.time, prometheus.GaugeValue, s, "time"),
-			e.parseAndNewMetric(ch, e.commands, prometheus.CounterValue, s, "cas_badval", "cas", "badval"),
-			e.parseAndNewMetric(ch, e.commands, prometheus.CounterValue, s, "cmd_flush", "flush", "hit"),
+			e.parseAndNewMetric(ch, e.cmdSet, prometheus.CounterValue, s, "cmd_set"),
+			e.parseAndNewMetric(ch, e.cmdGet, prometheus.CounterValue, s, "cmd_get"),
+			e.parseAndNewMetric(ch, e.slowCmd, prometheus.CounterValue, s, "slow_cmd"),
 		)
 		if err != nil {
 			parseError = err
 		}
 
-		// memcached includes cas operations again in cmd_set.
-		setCmd, err := parse(s, "cmd_set", e.logger)
-		if err == nil {
-			if cas, casErr := sum(s, "cas_misses", "cas_hits", "cas_badval"); casErr == nil {
-				ch <- prometheus.MustNewConstMetric(e.commands, prometheus.CounterValue, setCmd-cas, "set", "hit")
-			} else {
-				level.Error(e.logger).Log("msg", "Failed to parse cas", "err", casErr)
-				parseError = casErr
-			}
-		} else {
-			level.Error(e.logger).Log("msg", "Failed to parse set", "err", err)
-			parseError = err
-		}
-
 		err = firstError(
-			e.parseTimevalAndNewMetric(ch, e.rusageUser, prometheus.CounterValue, s, "rusage_user"),
-			e.parseTimevalAndNewMetric(ch, e.rusageSystem, prometheus.CounterValue, s, "rusage_system"),
-			e.parseAndNewMetric(ch, e.currentBytes, prometheus.GaugeValue, s, "bytes"),
-			e.parseAndNewMetric(ch, e.limitBytes, prometheus.GaugeValue, s, "limit_maxbytes"),
+			e.parseAndNewMetric(ch, e.rusageUser, prometheus.CounterValue, s, "rusage_user"),
+			e.parseAndNewMetric(ch, e.rusageSystem, prometheus.CounterValue, s, "rusage_system"),
 			e.parseAndNewMetric(ch, e.items, prometheus.GaugeValue, s, "curr_items"),
 			e.parseAndNewMetric(ch, e.itemsTotal, prometheus.CounterValue, s, "total_items"),
 			e.parseAndNewMetric(ch, e.bytesRead, prometheus.CounterValue, s, "bytes_read"),
 			e.parseAndNewMetric(ch, e.bytesWritten, prometheus.CounterValue, s, "bytes_written"),
 			e.parseAndNewMetric(ch, e.currentConnections, prometheus.GaugeValue, s, "curr_connections"),
 			e.parseAndNewMetric(ch, e.connectionsTotal, prometheus.CounterValue, s, "total_connections"),
-			e.parseAndNewMetric(ch, e.rejectedConnections, prometheus.CounterValue, s, "rejected_connections"),
-			e.parseAndNewMetric(ch, e.connsYieldedTotal, prometheus.CounterValue, s, "conn_yields"),
-			e.parseAndNewMetric(ch, e.listenerDisabledTotal, prometheus.CounterValue, s, "listen_disabled_num"),
-			e.parseAndNewMetric(ch, e.evictions, prometheus.CounterValue, s, "evictions"),
-			e.parseAndNewMetric(ch, e.reclaimed, prometheus.CounterValue, s, "reclaimed"),
-			e.parseAndNewMetric(ch, e.lruCrawlerStarts, prometheus.CounterValue, s, "lru_crawler_starts"),
-			e.parseAndNewMetric(ch, e.lruCrawlerItemsChecked, prometheus.CounterValue, s, "crawler_items_checked"),
-			e.parseAndNewMetric(ch, e.lruCrawlerReclaimed, prometheus.CounterValue, s, "crawler_reclaimed"),
-			e.parseAndNewMetric(ch, e.lruCrawlerMovesToCold, prometheus.CounterValue, s, "moves_to_cold"),
-			e.parseAndNewMetric(ch, e.lruCrawlerMovesToWarm, prometheus.CounterValue, s, "moves_to_warm"),
-			e.parseAndNewMetric(ch, e.lruCrawlerMovesWithinLru, prometheus.CounterValue, s, "moves_within_lru"),
-			e.parseAndNewMetric(ch, e.malloced, prometheus.GaugeValue, s, "total_malloced"),
 		)
 		if err != nil {
 			parseError = err
@@ -789,9 +777,6 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 func (e *Exporter) parseStatsSettings(ch chan<- prometheus.Metric, statsSettings map[net.Addr]map[string]string) error {
 	var parseError error
 	for _, settings := range statsSettings {
-		if err := e.parseAndNewMetric(ch, e.maxConnections, prometheus.GaugeValue, settings, "maxconns"); err != nil {
-			parseError = err
-		}
 
 		if v, ok := settings["lru_crawler"]; ok && v == "yes" {
 			err := firstError(

@@ -15,7 +15,7 @@ By default the memcache_exporter serves on port `0.0.0.0:9150` at `/metrics`:
 
 ```sh
 make
-./memcached_exporter
+./beansdb_exporter
 ```
 
 Alternatively a Dockerfile is supplied:
