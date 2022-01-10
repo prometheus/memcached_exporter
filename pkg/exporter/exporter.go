@@ -40,6 +40,8 @@ type Exporter struct {
 	timeout time.Duration
 	logger  log.Logger
 
+	getSettings bool
+
 	up                       *prometheus.Desc
 	uptime                   *prometheus.Desc
 	time                     *prometheus.Desc
@@ -109,11 +111,12 @@ type Exporter struct {
 }
 
 // New returns an initialized exporter.
-func New(server string, timeout time.Duration, logger log.Logger) *Exporter {
+func New(server string, timeout time.Duration, getSettings bool, logger log.Logger) *Exporter {
 	return &Exporter{
-		address: server,
-		timeout: timeout,
-		logger:  logger,
+		address:     server,
+		timeout:     timeout,
+		logger:      logger,
+		getSettings: getSettings,
 		up: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, "", "up"),
 			"Could the memcached server be reached.",
@@ -602,17 +605,20 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		level.Error(e.logger).Log("msg", "Failed to collect stats from memcached", "err", err)
 		up = 0
 	}
-	statsSettings, err := c.StatsSettings()
-	if err != nil {
-		level.Error(e.logger).Log("msg", "Could not query stats settings", "err", err)
-		up = 0
-	}
 
 	if err := e.parseStats(ch, stats); err != nil {
 		up = 0
 	}
-	if err := e.parseStatsSettings(ch, statsSettings); err != nil {
-		up = 0
+
+	if e.getSettings {
+		statsSettings, err := c.StatsSettings()
+		if err != nil {
+			level.Error(e.logger).Log("msg", "Could not query stats settings", "err", err)
+			up = 0
+		}
+		if err := e.parseStatsSettings(ch, statsSettings); err != nil {
+			up = 0
+		}
 	}
 
 	ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, up)

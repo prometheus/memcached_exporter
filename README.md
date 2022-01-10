@@ -24,6 +24,14 @@ Alternatively a Dockerfile is supplied:
 docker run -p 9150:9150 quay.io/prometheus/memcached-exporter:latest
 ```
 
+## mcrouter
+
+In order to use the memcached_exporter with [mcrouter](https://github.com/facebook/mcrouter) the "STATS SETTINGS" collection needs to be disabled.
+
+```sh
+./memcached_exporter --no.memcached.stats.settings
+```
+
 ## Collectors
 
 The exporter collects a number of statistics from the server:

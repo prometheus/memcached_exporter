@@ -36,6 +36,7 @@ func main() {
 		address       = kingpin.Flag("memcached.address", "Memcached server address.").Default("localhost:11211").String()
 		timeout       = kingpin.Flag("memcached.timeout", "memcached connect timeout.").Default("1s").Duration()
 		pidFile       = kingpin.Flag("memcached.pid-file", "Optional path to a file containing the memcached PID for additional metrics.").Default("").String()
+		getSettings   = kingpin.Flag("memcached.stats.settings", "Enable collection of STATS SETTINGS.").Default("true").Bool()
 		webConfig     = webflag.AddFlags(kingpin.CommandLine)
 		listenAddress = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9150").String()
 		metricsPath   = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
@@ -51,7 +52,7 @@ func main() {
 	level.Info(logger).Log("msg", "Build context", "context", version.BuildContext())
 
 	prometheus.MustRegister(version.NewCollector("memcached_exporter"))
-	prometheus.MustRegister(exporter.New(*address, *timeout, logger))
+	prometheus.MustRegister(exporter.New(*address, *timeout, *getSettings, logger))
 
 	if *pidFile != "" {
 		procExporter := collectors.NewProcessCollector(collectors.ProcessCollectorOpts{

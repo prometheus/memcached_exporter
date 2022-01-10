@@ -45,7 +45,7 @@ func TestParseStatsSettings(t *testing.T) {
 			},
 		}
 		ch := make(chan prometheus.Metric, 100)
-		e := New("", 100*time.Millisecond, log.NewNopLogger())
+		e := New("", 100*time.Millisecond, true, log.NewNopLogger())
 		if err := e.parseStatsSettings(ch, statsSettings); err != nil {
 			t.Errorf("expect return error, error: %v", err)
 		}
@@ -67,7 +67,7 @@ func TestParseStatsSettings(t *testing.T) {
 			},
 		}
 		ch := make(chan prometheus.Metric, 100)
-		e := New("", 100*time.Millisecond, log.NewNopLogger())
+		e := New("", 100*time.Millisecond, true, log.NewNopLogger())
 		if err := e.parseStatsSettings(ch, statsSettings); err == nil {
 			t.Error("expect return error but not")
 		}
