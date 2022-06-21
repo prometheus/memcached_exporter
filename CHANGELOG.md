@@ -1,3 +1,8 @@
+## 0.10.0 / 2022-06-21
+
+* [FEATURE] Add rusage and rejected_connection metrics #109
+* [FEATURE] Add extstore metrics #117
+
 ## 0.9.0 / 2021-03-25
 
 * [FEATURE] Add TLS and basic authentication #101
