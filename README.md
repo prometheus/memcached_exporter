@@ -188,6 +188,48 @@ using the `--web.config.file` parameter. The format of the file is described
 To use TLS for connections to memcached, use the `--memcached.tls.*` flags.
 See `memcached_exporter --help` for details.
 
+## Multi-target
+
+The exporter also supports the [multi-target](https://prometheus.io/docs/guides/multi-target-exporter/) pattern on the `/scrape` endpoint. Example:
+```
+curl `localhost:9150/scrape?target=memcached-host.company.com:11211
+```
+
+An example configuration using [prometheus-elasticache-sd](https://github.com/maxbrunet/prometheus-elasticache-sd):
+
+```
+scrape_configs:
+  - job_name: "memcached_exporter_targets"
+    file_sd_configs:
+    - files:
+        - /path/to/elasticache.json  # File created by service discovery
+    metrics_path: /scrape
+    relabel_configs:
+      # Filter for memcached cache nodes
+      - source_labels: [__meta_elasticache_engine]
+        regex: memcached
+        action: keep
+      # Build Memcached URL to use as target parameter for the exporter
+      - source_labels:
+          - __meta_elasticache_endpoint_address
+          - __meta_elasticache_endpoint_port
+        replacement: $1
+        separator: ':'
+        target_label: __param_target
+      # Use Redis URL as instance label
+      - source_labels: [__param_target]
+        target_label: instance
+      # Set exporter address
+      - target_label: __address__
+        replacement: memcached-exporter-service.company.com:9151
+```
+
+If you are running solely for `multi-target` start the exporter with `--memcached.address=""` to avoid attempting to connect to a non existing memcached host, example:
+
+```
+./memcached-exporter --memcached.address=""
+```
+
 [buildstatus]: https://circleci.com/gh/prometheus/memcached_exporter/tree/master.svg?style=shield
 [circleci]: https://circleci.com/gh/prometheus/memcached_exporter
 [hub]: https://hub.docker.com/r/prom/memcached-exporter/
