@@ -1,0 +1,153 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: elasticache-prometheus-exporter-test-config
+data:
+  prometheus.yml: |
+    scrape_configs:
+    - job_name: "redis_exporter_targets"
+      file_sd_configs:
+        - files:
+          - "/etc/discovery/elasticache.json"
+          refresh_interval: "5m"
+      metrics_path: /scrape
+      relabel_configs:
+        - source_labels: [__meta_elasticache_tag_NU_PROTOTYPE]
+          regex: s0
+          action: keep
+        - source_labels:
+            - __meta_elasticache_endpoint_address
+            - __meta_elasticache_endpoint_port
+          replacement: $1
+          separator: ':'
+          target_label: __param_target
+        - action: labelmap
+          regex: __meta_elasticache_(.+)
+        - source_labels: [__meta_elasticache_replication_group_id]
+          target_label: service
+        - source_labels: [__meta_elasticache_tag_NU_PROTOTYPE]
+          target_label: prototype
+        - source_labels: [__meta_elasticache_tag_NU_ENV]
+          target_label: environment
+        - source_labels: [__meta_elasticache_tag_NU_STACK_ID]
+          target_label: stack_id
+        - source_labels: [__meta_elasticache_tag_NU_STACK_ID]
+          target_label: layer
+        - source_labels: [__meta_elasticache_tag_NU_SERVICE]
+          target_label: service
+        - source_labels: [__meta_elasticache_tag_NU_SQUAD]
+          target_label: squad
+        - source_labels: [__meta_elasticache_engine]
+          regex: redis
+          target_label: __address__
+          replacement: localhost:9121
+        - source_labels: [__meta_elasticache_engine]
+          regex: memcached
+          target_label: __address__
+          replacement: localhost:9150
+    - job_name: "redis_exporter"
+      static_configs:
+        - targets:
+            - "localhost:9121"
+    - job_name: "memcached_exporter"
+      static_configs:
+        - targets:
+            - "localhost:9150"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: elasticache-prometheus-exporter-test
+  labels:
+    nubank.com.br/business-unit: foundation
+    nubank.com.br/environment: staging
+    nubank.com.br/name: elasticache-prometheus-exporter-test
+    nubank.com.br/prototype: s0
+    nubank.com.br/squad: databases
+spec:
+  selector:
+    matchLabels:
+      nubank.com.br/business-unit: foundation
+      nubank.com.br/environment: staging
+      nubank.com.br/name: elasticache-prometheus-exporter-test
+      nubank.com.br/prototype: s0
+      nubank.com.br/squad: databases
+  template:
+    metadata:
+      labels:
+        nubank.com.br/business-unit: foundation
+        nubank.com.br/environment: staging
+        nubank.com.br/name: elasticache-prometheus-exporter-test
+        nubank.com.br/prototype: s0
+        nubank.com.br/squad: databases
+      annotations:
+        iam.amazonaws.com/role: "staging/rainmaker/pink/staging-pink-rainmaker-role"
+    spec:
+      volumes:
+        - name: discovery-mount
+          emptyDir: {}
+        - name: prometheus-data
+          emptyDir: {}
+        - name: prometheus-config
+          configMap:
+              name: elasticache-prometheus-exporter-test-config
+      containers:
+      - name: discovery
+        image: ghcr.io/maxbrunet/prometheus-elasticache-sd:latest
+        securityContext:
+          runAsUser: 65534
+        volumeMounts:
+          - name: discovery-mount
+            mountPath: /etc/discovery
+        args:
+          - "--aws.region=us-east-1"
+          - "--output.file=/etc/discovery/elasticache.json"
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+      - name: exporter
+        image: quay.io/oliver006/redis_exporter
+        ports:
+          - containerPort: 9121
+        args:
+          - "--redis.addr="
+        resources:
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+      - name: memcached-exporter
+        image: 193814090748.dkr.ecr.us-east-1.amazonaws.com/test/memcached-exporter:mateus2
+        ports:
+          - containerPort: 9150
+        args:
+          - "--memcached.address="
+        resources:
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+
+      - name: prometheus
+        image: quay.io/prometheus/prometheus
+        volumeMounts:
+          - name: prometheus-config
+            mountPath: /etc/prometheus
+          - name: discovery-mount
+            mountPath: /etc/discovery
+          - name: prometheus-data
+            mountPath: /prometheus
+        args:
+         - '--log.level=debug'
+         - '--config.file=/etc/prometheus/prometheus.yml'
+         - '--web.listen-address=0.0.0.0:9090'
+         - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+         - '--web.console.templates=/usr/share/prometheus/consoles'
+         - '--storage.tsdb.path=/prometheus'
+        ports:
+          - containerPort: 9090
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"

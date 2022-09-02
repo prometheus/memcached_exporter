@@ -26,9 +26,10 @@ import (
 	"github.com/prometheus/common/version"
 	"github.com/prometheus/exporter-toolkit/web"
 	webflag "github.com/prometheus/exporter-toolkit/web/kingpinflag"
-	"gopkg.in/alecthomas/kingpin.v2"
+	kingpin "gopkg.in/alecthomas/kingpin.v2"
 
 	"github.com/prometheus/memcached_exporter/pkg/exporter"
+	"github.com/prometheus/memcached_exporter/pkg/scraper"
 )
 
 func main() {
@@ -39,7 +40,9 @@ func main() {
 		webConfig     = webflag.AddFlags(kingpin.CommandLine)
 		listenAddress = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9150").String()
 		metricsPath   = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
+		scrapePath    = kingpin.Flag("web.scrape-path", "Path under which to receive scrape requests.").Default("/scrape").String()
 	)
+
 	promlogConfig := &promlog.Config{}
 	flag.AddFlags(kingpin.CommandLine, promlogConfig)
 	kingpin.HelpFlag.Short('h')
@@ -61,7 +64,9 @@ func main() {
 		prometheus.MustRegister(procExporter)
 	}
 
+	scraper := scraper.New(logger)
 	http.Handle(*metricsPath, promhttp.Handler())
+	http.Handle(*scrapePath, scraper.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<html>
              <head><title>Memcached Exporter</title></head>
