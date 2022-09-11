@@ -2,9 +2,6 @@ go:
     # Whenever the Go version is updated here, .circle/config.yml should also
     # be updated.
     version: 1.18
-crossbuild:
-    platforms:
-        - linux/amd64
 repository:
     path: github.com/prometheus/memcached_exporter
 build:

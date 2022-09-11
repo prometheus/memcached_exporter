@@ -6,7 +6,7 @@ metadata:
 data:
   prometheus.yml: |
     scrape_configs:
-    - job_name: "redis_exporter_targets"
+    - job_name: "elasticache_sd"
       file_sd_configs:
         - files:
           - "/etc/discovery/elasticache.json"
@@ -21,11 +21,9 @@ data:
             - __meta_elasticache_endpoint_port
           replacement: $1
           separator: ':'
+          target_label: instance
+        - source_labels: [instance]
           target_label: __param_target
-        - action: labelmap
-          regex: __meta_elasticache_(.+)
-        - source_labels: [__meta_elasticache_replication_group_id]
-          target_label: service
         - source_labels: [__meta_elasticache_tag_NU_PROTOTYPE]
           target_label: prototype
         - source_labels: [__meta_elasticache_tag_NU_ENV]
@@ -119,7 +117,8 @@ spec:
               memory: "128Mi"
               cpu: "500m"
       - name: memcached-exporter
-        image: 193814090748.dkr.ecr.us-east-1.amazonaws.com/test/memcached-exporter:mateus2
+        image: 193814090748.dkr.ecr.us-east-1.amazonaws.com/test/memcached-exporter-linux-amd64:add-multi-target
+        imagePullPolicy: Always
         ports:
           - containerPort: 9150
         args:

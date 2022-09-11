@@ -29,7 +29,7 @@ import (
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
 
 	"github.com/prometheus/memcached_exporter/pkg/exporter"
-	"github.com/prometheus/memcached_exporter/pkg/scraper"
+	"github.com/prometheus/memcached_exporter/scraper"
 )
 
 func main() {
@@ -54,7 +54,10 @@ func main() {
 	level.Info(logger).Log("msg", "Build context", "context", version.BuildContext())
 
 	prometheus.MustRegister(version.NewCollector("memcached_exporter"))
-	prometheus.MustRegister(exporter.New(*address, *timeout, logger))
+
+	if *address != "" {
+		prometheus.MustRegister(exporter.New(*address, *timeout, logger))
+	}
 
 	if *pidFile != "" {
 		procExporter := collectors.NewProcessCollector(collectors.ProcessCollectorOpts{
@@ -64,7 +67,7 @@ func main() {
 		prometheus.MustRegister(procExporter)
 	}
 
-	scraper := scraper.New(logger)
+	scraper := scraper.New(*timeout, logger)
 	http.Handle(*metricsPath, promhttp.Handler())
 	http.Handle(*scrapePath, scraper.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

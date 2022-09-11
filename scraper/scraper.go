@@ -14,35 +14,36 @@
 package scraper
 
 import (
-	"fmt"
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/memcached_exporter/pkg/exporter"
 )
 
 type Scraper struct {
-	logger log.Logger
+	logger  log.Logger
+	timeout time.Duration
 
-	totalScrapes prometheus.Counter
+	scrapeCount  prometheus.Counter
 	scrapeErrors prometheus.Counter
 }
 
-func New(logger log.Logger) *Scraper {
-	logger.Log("Creating new scraper")
+func New(timeout time.Duration, logger log.Logger) *Scraper {
+	level.Debug(logger).Log("msg", "Started scrapper")
 	return &Scraper{
-		logger: logger,
-		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: "exporter_scrapes_total",
-			Help: "Current total redis scrapes.",
+		logger:  logger,
+		timeout: timeout,
+		scrapeCount: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "memcached_exporter_scrape_count",
+			Help: "Count of memcached exporter scapes.",
 		}),
 		scrapeErrors: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: "exporter_scrapes_total",
-			Help: "Current total redis scrapes.",
+			Name: "memcached_exporter_scrape_error_count",
+			Help: "Count of memcached exporter scape errors.",
 		}),
 	}
 }
@@ -50,25 +51,20 @@ func New(logger log.Logger) *Scraper {
 func (s *Scraper) Handler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		target := r.URL.Query().Get("target")
-		s.logger.Log("Calling handler with target: %s", target)
-		s.totalScrapes.Inc()
+		level.Debug(s.logger).Log("msg", "scrapping memcached", "target", target)
+		s.scrapeCount.Inc()
 
 		if target == "" {
-			http.Error(w, "'target' parameter must be specified", http.StatusBadRequest)
+			errorStr := "'target' parameter must be specified"
+			level.Warn(s.logger).Log("msg", errorStr)
+			http.Error(w, errorStr, http.StatusBadRequest)
 			s.scrapeErrors.Inc()
 			return
 		}
 
-		u, err := url.Parse(target)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Invalid 'target' parameter, parse err: %ck ", err), http.StatusBadRequest)
-			s.scrapeErrors.Inc()
-			return
-		}
-
-		e := exporter.New(u.String(), 30*time.Second, s.logger)
+		e := exporter.New(target, s.timeout, s.logger)
 		registry := prometheus.NewRegistry()
-		registry.MustRegister(e)
+		registry.Register(e)
 
 		promhttp.HandlerFor(
 			registry, promhttp.HandlerOpts{ErrorHandling: promhttp.ContinueOnError},
