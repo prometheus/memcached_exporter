@@ -33,3 +33,5 @@ require (
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
+
+replace github.com/grobie/gomemcache v0.0.0-20201204163352-08d7c80fcac6 => github.com/nrhodes91/gomemcache v0.0.0-20211122122106-331774faa4ec
