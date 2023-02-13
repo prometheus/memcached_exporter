@@ -1,9 +1,11 @@
-## 0.11.0 / 2023-02-13
+## 0.11.1 / 2023-02-13
 
 * [FEATURE] Add metric to indicate if memcached is accepting connections #137
 * [FEATURE] Support TLS for connection to memcached #153
 * [FEATURE] Support systemd socket activation #147
 * [ENHANCEMENT] Miscellaneous dependency updates #151 #147 #146 #140
+
+Release 0.11.0 failed due to CI issues.
 
 ## 0.10.0 / 2022-06-21
 
