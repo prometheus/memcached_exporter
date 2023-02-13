@@ -641,7 +641,7 @@ func New(server string, timeout time.Duration, logger log.Logger, tlsConfig *tls
 			nil,
 		),
 		acceptingConnections: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, "", "accepting_conns"),
+			prometheus.BuildFQName(Namespace, "", "accepting_connections"),
 			"The Memcached server is currently accepting new connections.",
 			nil,
 			nil,
