@@ -42,6 +42,7 @@ func TestParseStatsSettings(t *testing.T) {
 				"warm_lru_pct":          "40",
 				"hot_max_factor":        "0.20",
 				"warm_max_factor":       "2.00",
+				"accepting_conns":       "1",
 			},
 		}
 		ch := make(chan prometheus.Metric, 100)
@@ -64,6 +65,7 @@ func TestParseStatsSettings(t *testing.T) {
 				"warm_lru_pct":          "40",
 				"hot_max_factor":        "0.20",
 				"warm_max_factor":       "2.00",
+				"accepting_conns":       "fail",
 			},
 		}
 		ch := make(chan prometheus.Metric, 100)

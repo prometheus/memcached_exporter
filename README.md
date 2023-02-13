@@ -29,6 +29,8 @@ docker run -p 9150:9150 quay.io/prometheus/memcached-exporter:latest
 The exporter collects a number of statistics from the server:
 
 ```
+# HELP memcached_accepting_conns The Memcached server is currently accepting new connections.
+# TYPE memcached_accepting_conns gauge
 # HELP memcached_commands_total Total number of all requests broken down by command (get, set, etc.) and status.
 # TYPE memcached_commands_total counter
 # HELP memcached_connections_listener_disabled_total Number of times that memcached has hit its connections limit and disabled its listener.

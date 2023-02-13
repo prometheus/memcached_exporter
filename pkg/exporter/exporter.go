@@ -126,6 +126,7 @@ type Exporter struct {
 	extstoreBytesUsed        *prometheus.Desc
 	extstoreBytesLimit       *prometheus.Desc
 	extstoreBytesFragmented  *prometheus.Desc
+	acceptingConnections     *prometheus.Desc
 }
 
 // New returns an initialized exporter.
@@ -639,6 +640,12 @@ func New(server string, timeout time.Duration, logger log.Logger, tlsConfig *tls
 			nil,
 			nil,
 		),
+		acceptingConnections: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "accepting_conns"),
+			"The Memcached server is currently accepting new connections.",
+			nil,
+			nil,
+		),
 	}
 }
 
@@ -730,6 +737,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.extstoreBytesUsed
 	ch <- e.extstoreBytesFragmented
 	ch <- e.extstoreBytesLimit
+	ch <- e.acceptingConnections
 }
 
 // Collect fetches the statistics from the configured memcached server, and
@@ -881,6 +889,7 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 			e.parseAndNewMetric(ch, e.lruCrawlerMovesToWarm, prometheus.CounterValue, s, "moves_to_warm"),
 			e.parseAndNewMetric(ch, e.lruCrawlerMovesWithinLru, prometheus.CounterValue, s, "moves_within_lru"),
 			e.parseAndNewMetric(ch, e.malloced, prometheus.GaugeValue, s, "total_malloced"),
+			e.parseAndNewMetric(ch, e.acceptingConnections, prometheus.GaugeValue, s, "accepting_conns"),
 		)
 		if err != nil {
 			parseError = err
