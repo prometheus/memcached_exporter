@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/go-kit/log v0.2.1
-	github.com/grobie/gomemcache v0.0.0-20201204163352-08d7c80fcac6
+	github.com/grobie/gomemcache v0.0.0-20230213081705-239240bbc445
 	github.com/prometheus/client_golang v1.14.0
 	github.com/prometheus/common v0.37.0
 	github.com/prometheus/exporter-toolkit v0.7.1
@@ -33,5 +33,3 @@ require (
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
-
-replace github.com/grobie/gomemcache v0.0.0-20201204163352-08d7c80fcac6 => github.com/nrhodes91/gomemcache v0.0.0-20211122122106-331774faa4ec
