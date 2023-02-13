@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/go-kit/log v0.2.1
-	github.com/grobie/gomemcache v0.0.0-20201204163352-08d7c80fcac6
+	github.com/grobie/gomemcache v0.0.0-20230213081705-239240bbc445
 	github.com/prometheus/client_golang v1.14.0
 	github.com/prometheus/common v0.39.0
 	github.com/prometheus/exporter-toolkit v0.7.1
