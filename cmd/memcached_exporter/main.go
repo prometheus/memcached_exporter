@@ -45,8 +45,7 @@ func main() {
 		caFile             = kingpin.Flag("memcached.tls.ca-file", "Client root CA file.").Default("").String()
 		insecureSkipVerify = kingpin.Flag("memcached.tls.insecure-skip-verify", "Skip server certificate verification").Bool()
 		serverName         = kingpin.Flag("memcached.tls.server-name", "Memcached TLS certificate servername").Default("").String()
-		webConfig          = webflag.AddFlags(kingpin.CommandLine)
-		listenAddress      = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9150").String()
+		webConfig          = webflag.AddFlags(kingpin.CommandLine, ":9150")
 		metricsPath        = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
 	)
 	promlogConfig := &promlog.Config{}
@@ -106,9 +105,8 @@ func main() {
              </html>`))
 	})
 
-	level.Info(logger).Log("msg", "Listening on address", "address", *listenAddress)
-	srv := &http.Server{Addr: *listenAddress}
-	if err := web.ListenAndServe(srv, *webConfig, logger); err != nil {
+	srv := &http.Server{}
+	if err := web.ListenAndServe(srv, webConfig, logger); err != nil {
 		level.Error(logger).Log("msg", "Error running HTTP server", "err", err)
 		os.Exit(1)
 	}
