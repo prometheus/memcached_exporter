@@ -62,14 +62,14 @@ func main() {
 		tlsConfig *tls.Config
 		err       error
 	)
-	if *serverName == "" {
-		*serverName, _, err = net.SplitHostPort(*address)
-		if err != nil {
-			level.Error(logger).Log("msg", "Error running HTTP server", "err", err)
-			os.Exit(1)
-		}
-	}
 	if *enableTLS {
+		if *serverName == "" {
+			*serverName, _, err = net.SplitHostPort(*address)
+			if err != nil {
+				level.Error(logger).Log("msg", "Error running HTTP server", "err", err)
+				os.Exit(1)
+			}
+		}
 		tlsConfig, err = promconfig.NewTLSConfig(&promconfig.TLSConfig{
 			CertFile:           *certFile,
 			KeyFile:            *keyFile,
