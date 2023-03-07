@@ -18,6 +18,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
@@ -66,7 +67,18 @@ func main() {
 		if *serverName == "" {
 			*serverName, _, err = net.SplitHostPort(*address)
 			if err != nil {
-				level.Error(logger).Log("msg", "Error running HTTP server", "err", err)
+				if strings.HasPrefix(*address, string(os.PathSeparator)) {
+					level.Error(logger).Log("msg",
+						"If --memcached.tls.enable is set and --memcached.address is a unix socket, "+
+							"you must also specify --memcached.tls.server-name")
+				} else {
+					level.Error(logger).Log("msg", "Error parsing memcached address", "err", err)
+				}
+				os.Exit(1)
+			} else if net.ParseIP(*serverName) != nil {
+				level.Error(logger).Log("msg",
+					"If --memcached.tls.enable is set and --memcached.address is an IP address, "+
+						"you must also specify --memcached.tls.server-name")
 				os.Exit(1)
 			}
 		}
