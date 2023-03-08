@@ -1,3 +1,8 @@
+## 0.11.2 / 2023-03-08
+
+* [BUGFIX] Fix connections via UNIX domain socket #157
+* [CHANGE] Update dependencies, including exporter toolkit #161
+
 ## 0.11.1 / 2023-02-13
 
 * [FEATURE] Add metric to indicate if memcached is accepting connections #137
