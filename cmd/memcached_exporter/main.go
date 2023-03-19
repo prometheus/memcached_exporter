@@ -75,11 +75,6 @@ func main() {
 					level.Error(logger).Log("msg", "Error parsing memcached address", "err", err)
 				}
 				os.Exit(1)
-			} else if net.ParseIP(*serverName) != nil {
-				level.Error(logger).Log("msg",
-					"If --memcached.tls.enable is set and --memcached.address is an IP address, "+
-						"you must also specify --memcached.tls.server-name")
-				os.Exit(1)
 			}
 		}
 		tlsConfig, err = promconfig.NewTLSConfig(&promconfig.TLSConfig{
