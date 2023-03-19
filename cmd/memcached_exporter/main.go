@@ -67,7 +67,7 @@ func main() {
 		if *serverName == "" {
 			*serverName, _, err = net.SplitHostPort(*address)
 			if err != nil {
-				if strings.HasPrefix(*address, string(os.PathSeparator)) {
+				if strings.Contains(*address, "/") {
 					level.Error(logger).Log("msg",
 						"If --memcached.tls.enable is set and --memcached.address is a unix socket, "+
 							"you must also specify --memcached.tls.server-name")
