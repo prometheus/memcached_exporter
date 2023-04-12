@@ -1,3 +1,8 @@
+## 0.11.3 / 2023-04-12
+
+* [ENHANCEMENT] Better error messaging when TLS server name is required #162
+* [CHANGE] Update dependencies & build with Go 1.20 to avoid upstream CVEs #166
+
 ## 0.11.2 / 2023-03-08
 
 * [BUGFIX] Fix connections via UNIX domain socket #157
