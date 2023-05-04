@@ -857,6 +857,7 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 				e.parseAndNewMetric(ch, e.extstorePageAllocs, prometheus.CounterValue, s, "extstore_page_allocs"),
 				e.parseAndNewMetric(ch, e.extstorePageEvictions, prometheus.CounterValue, s, "extstore_page_evictions"),
 				e.parseAndNewMetric(ch, e.extstorePageReclaims, prometheus.CounterValue, s, "extstore_page_reclaims"),
+				e.parseAndNewMetric(ch, e.extstorePagesFree, prometheus.GaugeValue, s, "extstore_pages_free"),
 				e.parseAndNewMetric(ch, e.extstorePagesUsed, prometheus.GaugeValue, s, "extstore_pages_used"),
 				e.parseAndNewMetric(ch, e.extstoreObjectsEvicted, prometheus.CounterValue, s, "extstore_objects_evicted"),
 				e.parseAndNewMetric(ch, e.extstoreObjectsRead, prometheus.CounterValue, s, "extstore_objects_read"),
