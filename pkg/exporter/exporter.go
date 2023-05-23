@@ -126,6 +126,7 @@ type Exporter struct {
 	extstoreBytesUsed        *prometheus.Desc
 	extstoreBytesLimit       *prometheus.Desc
 	extstoreBytesFragmented  *prometheus.Desc
+	extstoreIOQueueDepth     *prometheus.Desc
 	acceptingConnections     *prometheus.Desc
 }
 
@@ -640,6 +641,12 @@ func New(server string, timeout time.Duration, logger log.Logger, tlsConfig *tls
 			nil,
 			nil,
 		),
+		extstoreIOQueueDepth: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "extstore_io_queue_depth"),
+			"Number of items in the I/O queue waiting to be processed.",
+			nil,
+			nil,
+		),
 		acceptingConnections: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, "", "accepting_connections"),
 			"The Memcached server is currently accepting new connections.",
@@ -737,6 +744,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.extstoreBytesUsed
 	ch <- e.extstoreBytesFragmented
 	ch <- e.extstoreBytesLimit
+	ch <- e.extstoreIOQueueDepth
 	ch <- e.acceptingConnections
 }
 
@@ -849,6 +857,7 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 				e.parseAndNewMetric(ch, e.extstorePageAllocs, prometheus.CounterValue, s, "extstore_page_allocs"),
 				e.parseAndNewMetric(ch, e.extstorePageEvictions, prometheus.CounterValue, s, "extstore_page_evictions"),
 				e.parseAndNewMetric(ch, e.extstorePageReclaims, prometheus.CounterValue, s, "extstore_page_reclaims"),
+				e.parseAndNewMetric(ch, e.extstorePagesFree, prometheus.GaugeValue, s, "extstore_pages_free"),
 				e.parseAndNewMetric(ch, e.extstorePagesUsed, prometheus.GaugeValue, s, "extstore_pages_used"),
 				e.parseAndNewMetric(ch, e.extstoreObjectsEvicted, prometheus.CounterValue, s, "extstore_objects_evicted"),
 				e.parseAndNewMetric(ch, e.extstoreObjectsRead, prometheus.CounterValue, s, "extstore_objects_read"),
@@ -860,6 +869,7 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 				e.parseAndNewMetric(ch, e.extstoreBytesUsed, prometheus.CounterValue, s, "extstore_bytes_used"),
 				e.parseAndNewMetric(ch, e.extstoreBytesFragmented, prometheus.GaugeValue, s, "extstore_bytes_fragmented"),
 				e.parseAndNewMetric(ch, e.extstoreBytesLimit, prometheus.GaugeValue, s, "extstore_limit_maxbytes"),
+				e.parseAndNewMetric(ch, e.extstoreIOQueueDepth, prometheus.GaugeValue, s, "extstore_io_queue"),
 			)
 			if err != nil {
 				parseError = err
