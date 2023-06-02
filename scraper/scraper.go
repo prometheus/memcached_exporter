@@ -14,6 +14,7 @@
 package scraper
 
 import (
+	"crypto/tls"
 	"net/http"
 	"time"
 
@@ -25,18 +26,20 @@ import (
 )
 
 type Scraper struct {
-	logger  log.Logger
-	timeout time.Duration
+	logger    log.Logger
+	timeout   time.Duration
+	tlsConfig *tls.Config
 
 	scrapeCount  prometheus.Counter
 	scrapeErrors prometheus.Counter
 }
 
-func New(timeout time.Duration, logger log.Logger) *Scraper {
+func New(timeout time.Duration, logger log.Logger, tlsConfig *tls.Config) *Scraper {
 	level.Debug(logger).Log("msg", "Started scrapper")
 	return &Scraper{
-		logger:  logger,
-		timeout: timeout,
+		logger:    logger,
+		timeout:   timeout,
+		tlsConfig: tlsConfig,
 		scrapeCount: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "memcached_exporter_scrapes_total",
 			Help: "Count of memcached exporter scapes.",
@@ -62,7 +65,7 @@ func (s *Scraper) Handler() http.HandlerFunc {
 			return
 		}
 
-		e := exporter.New(target, s.timeout, s.logger)
+		e := exporter.New(target, s.timeout, s.logger, s.tlsConfig)
 		registry := prometheus.NewRegistry()
 		registry.Register(e)
 

@@ -38,7 +38,6 @@ import (
 
 func main() {
 	var (
-<<<<<<< HEAD
 		address            = kingpin.Flag("memcached.address", "Memcached server address.").Default("localhost:11211").String()
 		timeout            = kingpin.Flag("memcached.timeout", "memcached connect timeout.").Default("1s").Duration()
 		pidFile            = kingpin.Flag("memcached.pid-file", "Optional path to a file containing the memcached PID for additional metrics.").Default("").String()
@@ -97,7 +96,7 @@ func main() {
 	prometheus.MustRegister(version.NewCollector("memcached_exporter"))
 
 	if *address != "" {
-		prometheus.MustRegister(exporter.New(*address, *timeout, logger))
+		prometheus.MustRegister(exporter.New(*address, *timeout, logger, tlsConfig))
 	}
 
 	if *pidFile != "" {
@@ -109,7 +108,7 @@ func main() {
 	}
 
 	http.Handle(*metricsPath, promhttp.Handler())
-	scraper := scraper.New(*timeout, logger)
+	scraper := scraper.New(*timeout, logger, tlsConfig)
 	http.Handle(*scrapePath, scraper.Handler())
 
 	if *metricsPath != "/" && *metricsPath != "" {
