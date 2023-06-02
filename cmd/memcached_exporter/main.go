@@ -33,6 +33,7 @@ import (
 	webflag "github.com/prometheus/exporter-toolkit/web/kingpinflag"
 
 	"github.com/prometheus/memcached_exporter/pkg/exporter"
+	"github.com/prometheus/memcached_exporter/scraper"
 )
 
 func main() {
@@ -48,7 +49,9 @@ func main() {
 		serverName         = kingpin.Flag("memcached.tls.server-name", "Memcached TLS certificate servername").Default("").String()
 		webConfig          = webflag.AddFlags(kingpin.CommandLine, ":9150")
 		metricsPath        = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
+		scrapePath         = kingpin.Flag("web.scrape-path", "Path under which to receive scrape requests.").Default("/scrape").String()
 	)
+
 	promlogConfig := &promlog.Config{}
 	flag.AddFlags(kingpin.CommandLine, promlogConfig)
 	kingpin.HelpFlag.Short('h')
@@ -91,7 +94,10 @@ func main() {
 	}
 
 	prometheus.MustRegister(version.NewCollector("memcached_exporter"))
-	prometheus.MustRegister(exporter.New(*address, *timeout, logger, tlsConfig))
+
+	if *address != "" {
+		prometheus.MustRegister(exporter.New(*address, *timeout, logger, tlsConfig))
+	}
 
 	if *pidFile != "" {
 		procExporter := collectors.NewProcessCollector(collectors.ProcessCollectorOpts{
@@ -102,6 +108,9 @@ func main() {
 	}
 
 	http.Handle(*metricsPath, promhttp.Handler())
+	scraper := scraper.New(*timeout, logger, tlsConfig)
+	http.Handle(*scrapePath, scraper.Handler())
+
 	if *metricsPath != "/" && *metricsPath != "" {
 		landingConfig := web.LandingConfig{
 			Name:        "memcached_exporter",
