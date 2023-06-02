@@ -38,11 +38,11 @@ func New(timeout time.Duration, logger log.Logger) *Scraper {
 		logger:  logger,
 		timeout: timeout,
 		scrapeCount: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: "memcached_exporter_scrape_count",
+			Name: "memcached_exporter_scrapes_total",
 			Help: "Count of memcached exporter scapes.",
 		}),
 		scrapeErrors: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: "memcached_exporter_scrape_error_count",
+			Name: "memcached_exporter_scrape_errors_total",
 			Help: "Count of memcached exporter scape errors.",
 		}),
 	}
