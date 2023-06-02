@@ -1,3 +1,8 @@
+## 0.12.0 / 2023-05-23
+
+* [ENHANCEMENT] Add `memcached_extstore_io_queue_depth` #169
+* [BUGFIX] Fix exposing `memcached_extstore_pages_free` #169
+
 ## 0.11.3 / 2023-04-12
 
 * [ENHANCEMENT] Better error messaging when TLS server name is required #162
