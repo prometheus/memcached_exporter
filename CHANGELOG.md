@@ -1,3 +1,7 @@
+## 0.13.0 / 2023-06-02
+
+* [FEATURE] Multi-target scrape support #143, #173
+
 ## 0.12.0 / 2023-06-02
 
 * [ENHANCEMENT] Add `memcached_extstore_io_queue_depth` #169
