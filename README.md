@@ -216,7 +216,7 @@ scrape_configs:
         replacement: $1
         separator: ':'
         target_label: __param_target
-      # Use Redis URL as instance label
+      # Use Memcached URL as instance label
       - source_labels: [__param_target]
         target_label: instance
       # Set exporter address
