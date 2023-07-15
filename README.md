@@ -197,7 +197,7 @@ curl `localhost:9150/scrape?target=memcached-host.company.com:11211
 
 An example configuration using [prometheus-elasticache-sd](https://github.com/maxbrunet/prometheus-elasticache-sd):
 
-```
+```yaml
 scrape_configs:
   - job_name: "memcached_exporter_targets"
     file_sd_configs:
@@ -216,7 +216,7 @@ scrape_configs:
         replacement: $1
         separator: ':'
         target_label: __param_target
-      # Use Redis URL as instance label
+      # Use Memcached URL as instance label
       - source_labels: [__param_target]
         target_label: instance
       # Set exporter address
