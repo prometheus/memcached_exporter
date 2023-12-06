@@ -1,3 +1,8 @@
+## 0.14.1 / 2023-12-06
+
+* [CHANGE] Build with Go 1.21 #190
+* [BUGFIX] Add missing `_total` suffix for metrics for failure to store items #191
+
 ## 0.14.0 / 2023-12-06
 
 * [FEATURE] Add metrics for failure to store items #184
