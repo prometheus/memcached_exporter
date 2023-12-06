@@ -63,6 +63,8 @@ type Exporter struct {
 	itemsTotal               *prometheus.Desc
 	evictions                *prometheus.Desc
 	reclaimed                *prometheus.Desc
+	itemStoreTooLarge        *prometheus.Desc
+	itemStoreNoMemory        *prometheus.Desc
 	lruCrawlerEnabled        *prometheus.Desc
 	lruCrawlerSleep          *prometheus.Desc
 	lruCrawlerMaxItems       *prometheus.Desc
@@ -260,6 +262,18 @@ func New(server string, timeout time.Duration, logger log.Logger, tlsConfig *tls
 		reclaimed: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, "", "items_reclaimed_total"),
 			"Total number of times an entry was stored using memory from an expired entry.",
+			nil,
+			nil,
+		),
+		itemStoreTooLarge: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "item_too_large"),
+			"The number of times an item exceeded the max-item-size when being stored.",
+			nil,
+			nil,
+		),
+		itemStoreNoMemory: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "item_no_memory"),
+			"The number of times an item could not be stored due to no more memory.",
 			nil,
 			nil,
 		),
@@ -680,6 +694,8 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.itemsTotal
 	ch <- e.evictions
 	ch <- e.reclaimed
+	ch <- e.itemStoreTooLarge
+	ch <- e.itemStoreNoMemory
 	ch <- e.lruCrawlerEnabled
 	ch <- e.lruCrawlerSleep
 	ch <- e.lruCrawlerMaxItems
@@ -793,6 +809,8 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 		"expired_unfetched": e.itemsExpiredUnfetched,
 		"outofmemory":       e.itemsOutofmemory,
 		"reclaimed":         e.itemsReclaimed,
+		"store_too_large":   e.itemStoreTooLarge,
+		"store_no_memory":   e.itemStoreNoMemory,
 		"tailrepairs":       e.itemsTailrepairs,
 		"mem_requested":     e.slabsMemRequested,
 		"moves_to_cold":     e.itemsMovesToCold,
@@ -892,6 +910,8 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 			e.parseAndNewMetric(ch, e.listenerDisabledTotal, prometheus.CounterValue, s, "listen_disabled_num"),
 			e.parseAndNewMetric(ch, e.evictions, prometheus.CounterValue, s, "evictions"),
 			e.parseAndNewMetric(ch, e.reclaimed, prometheus.CounterValue, s, "reclaimed"),
+			e.parseAndNewMetric(ch, e.itemStoreTooLarge, prometheus.CounterValue, s, "store_too_large"),
+			e.parseAndNewMetric(ch, e.itemStoreNoMemory, prometheus.CounterValue, s, "store_no_memory"),
 			e.parseAndNewMetric(ch, e.lruCrawlerStarts, prometheus.CounterValue, s, "lru_crawler_starts"),
 			e.parseAndNewMetric(ch, e.lruCrawlerItemsChecked, prometheus.CounterValue, s, "crawler_items_checked"),
 			e.parseAndNewMetric(ch, e.lruCrawlerReclaimed, prometheus.CounterValue, s, "crawler_reclaimed"),
