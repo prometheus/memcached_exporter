@@ -1,3 +1,7 @@
+## 0.14.0 / 2023-12-06
+
+* [FEATURE] Add metrics for failure to store items #184
+
 ## 0.13.1 / 2023-12-06
 
 * [CHANGE] Update dependencies
