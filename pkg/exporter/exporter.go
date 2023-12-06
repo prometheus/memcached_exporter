@@ -266,13 +266,13 @@ func New(server string, timeout time.Duration, logger log.Logger, tlsConfig *tls
 			nil,
 		),
 		itemStoreTooLarge: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, "", "item_too_large"),
+			prometheus.BuildFQName(Namespace, "", "item_too_large_total"),
 			"The number of times an item exceeded the max-item-size when being stored.",
 			nil,
 			nil,
 		),
 		itemStoreNoMemory: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, "", "item_no_memory"),
+			prometheus.BuildFQName(Namespace, "", "item_no_memory_total"),
 			"The number of times an item could not be stored due to no more memory.",
 			nil,
 			nil,
