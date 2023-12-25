@@ -1,3 +1,9 @@
+## 0.14.2 / 2023-12-22
+
+* [CHANGE] Update dependencies
+
+This addresses CVE-2023-48795 which is not exploitable in the exporter, but set off security scanners.
+
 ## 0.14.1 / 2023-12-06
 
 * [CHANGE] Build with Go 1.21 #190
