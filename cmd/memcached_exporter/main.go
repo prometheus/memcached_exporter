@@ -24,6 +24,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
+	versioncollector "github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	promconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/promlog"
@@ -93,7 +94,7 @@ func main() {
 		}
 	}
 
-	prometheus.MustRegister(version.NewCollector("memcached_exporter"))
+	prometheus.MustRegister(versioncollector.NewCollector("memcached_exporter"))
 
 	if *address != "" {
 		prometheus.MustRegister(exporter.New(*address, *timeout, logger, tlsConfig))
