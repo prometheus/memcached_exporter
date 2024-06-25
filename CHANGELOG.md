@@ -1,3 +1,9 @@
+## 0.14.4 / 2024-06-24
+
+* [CHANGE] Update dependencies
+
+This addresses CVE-2023-45288
+
 ## 0.14.3 / 2024-03-22
 
 * [CHANGE] Update dependencies
