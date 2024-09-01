@@ -279,7 +279,7 @@ func New(server string, timeout time.Duration, logger log.Logger, tlsConfig *tls
 			nil,
 		),
 		directReclaims: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, "", "total_direct_reclaims"),
+			prometheus.BuildFQName(Namespace, "", "direct_reclaims_total"),
 			"Times worker threads had to directly reclaim or evict items.",
 			nil,
 			nil,
