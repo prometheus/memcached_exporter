@@ -18,8 +18,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/promslog"
 )
 
 func TestParseStatsSettings(t *testing.T) {
@@ -46,7 +46,7 @@ func TestParseStatsSettings(t *testing.T) {
 			},
 		}
 		ch := make(chan prometheus.Metric, 100)
-		e := New("", 100*time.Millisecond, log.NewNopLogger(), nil)
+		e := New("", 100*time.Millisecond, promslog.NewNopLogger(), nil)
 		if err := e.parseStatsSettings(ch, statsSettings); err != nil {
 			t.Errorf("expect return error, error: %v", err)
 		}
@@ -69,7 +69,7 @@ func TestParseStatsSettings(t *testing.T) {
 			},
 		}
 		ch := make(chan prometheus.Metric, 100)
-		e := New("", 100*time.Millisecond, log.NewNopLogger(), nil)
+		e := New("", 100*time.Millisecond, promslog.NewNopLogger(), nil)
 		if err := e.parseStatsSettings(ch, statsSettings); err == nil {
 			t.Error("expect return error but not")
 		}
@@ -79,7 +79,7 @@ func TestParseStatsSettings(t *testing.T) {
 func TestParseTimeval(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		t.Parallel()
-		_, err := parseTimeval(map[string]string{"rusage_system": "3.5"}, "rusage_system", log.NewNopLogger())
+		_, err := parseTimeval(map[string]string{"rusage_system": "3.5"}, "rusage_system", promslog.NewNopLogger())
 		if err != nil {
 			t.Errorf("expect return error, error: %v", err)
 		}
@@ -87,7 +87,7 @@ func TestParseTimeval(t *testing.T) {
 
 	t.Run("Failure", func(t *testing.T) {
 		t.Parallel()
-		_, err := parseTimeval(map[string]string{"rusage_system": "35"}, "rusage_system", log.NewNopLogger())
+		_, err := parseTimeval(map[string]string{"rusage_system": "35"}, "rusage_system", promslog.NewNopLogger())
 		if err == nil {
 			t.Error("expect return error but not")
 		}

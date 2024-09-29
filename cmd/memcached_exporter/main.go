@@ -21,14 +21,13 @@ import (
 	"strings"
 
 	"github.com/alecthomas/kingpin/v2"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	versioncollector "github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	promconfig "github.com/prometheus/common/config"
-	"github.com/prometheus/common/promlog"
-	"github.com/prometheus/common/promlog/flag"
+	"github.com/prometheus/common/promslog"
+	"github.com/prometheus/common/promslog/flag"
 	"github.com/prometheus/common/version"
 	"github.com/prometheus/exporter-toolkit/web"
 	webflag "github.com/prometheus/exporter-toolkit/web/kingpinflag"
@@ -53,15 +52,15 @@ func main() {
 		scrapePath         = kingpin.Flag("web.scrape-path", "Path under which to receive scrape requests.").Default("/scrape").String()
 	)
 
-	promlogConfig := &promlog.Config{}
-	flag.AddFlags(kingpin.CommandLine, promlogConfig)
+	promslogConfig := &promslog.Config{}
+	flag.AddFlags(kingpin.CommandLine, promslogConfig)
 	kingpin.HelpFlag.Short('h')
 	kingpin.Version(version.Print("memcached_exporter"))
 	kingpin.Parse()
-	logger := promlog.New(promlogConfig)
+	logger := promslog.New(promslogConfig)
 
-	level.Info(logger).Log("msg", "Starting memcached_exporter", "version", version.Info())
-	level.Info(logger).Log("msg", "Build context", "context", version.BuildContext())
+	logger.Info("Starting memcached_exporter", "version", version.Info())
+	logger.Info("Build context", "context", version.BuildContext())
 
 	var (
 		tlsConfig *tls.Config
@@ -72,11 +71,10 @@ func main() {
 			*serverName, _, err = net.SplitHostPort(*address)
 			if err != nil {
 				if strings.Contains(*address, "/") {
-					level.Error(logger).Log("msg",
-						"If --memcached.tls.enable is set and --memcached.address is a unix socket, "+
-							"you must also specify --memcached.tls.server-name")
+					logger.Error("If --memcached.tls.enable is set and --memcached.address is a unix socket, " +
+						"you must also specify --memcached.tls.server-name")
 				} else {
-					level.Error(logger).Log("msg", "Error parsing memcached address", "err", err)
+					logger.Error("Error parsing memcached address", "err", err)
 				}
 				os.Exit(1)
 			}
@@ -89,7 +87,7 @@ func main() {
 			InsecureSkipVerify: *insecureSkipVerify,
 		})
 		if err != nil {
-			level.Error(logger).Log("msg", "Failed to create TLS config", "err", err)
+			logger.Error("Failed to create TLS config", "err", err)
 			os.Exit(1)
 		}
 	}
@@ -126,7 +124,7 @@ func main() {
 		}
 		landingPage, err := web.NewLandingPage(landingConfig)
 		if err != nil {
-			level.Error(logger).Log("err", err)
+			logger.Error("Error creating landing page", "err", err)
 			os.Exit(1)
 		}
 		http.Handle("/", landingPage)
@@ -134,7 +132,7 @@ func main() {
 
 	srv := &http.Server{}
 	if err := web.ListenAndServe(srv, webConfig, logger); err != nil {
-		level.Error(logger).Log("msg", "Error running HTTP server", "err", err)
+		logger.Error("Error running HTTP server", "err", err)
 		os.Exit(1)
 	}
 }
