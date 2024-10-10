@@ -16,13 +16,12 @@ package exporter
 import (
 	"crypto/tls"
 	"errors"
+	"log/slog"
 	"net"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/grobie/gomemcache/memcache"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -39,7 +38,7 @@ var errKeyNotFound = errors.New("key not found")
 type Exporter struct {
 	address   string
 	timeout   time.Duration
-	logger    log.Logger
+	logger    *slog.Logger
 	tlsConfig *tls.Config
 
 	up                       *prometheus.Desc
@@ -133,7 +132,7 @@ type Exporter struct {
 }
 
 // New returns an initialized exporter.
-func New(server string, timeout time.Duration, logger log.Logger, tlsConfig *tls.Config) *Exporter {
+func New(server string, timeout time.Duration, logger *slog.Logger, tlsConfig *tls.Config) *Exporter {
 	return &Exporter{
 		address:   server,
 		timeout:   timeout,
@@ -770,7 +769,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	c, err := memcache.New(e.address)
 	if err != nil {
 		ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 0)
-		level.Error(e.logger).Log("msg", "Failed to connect to memcached", "err", err)
+		e.logger.Error("Failed to connect to memcached", "err", err)
 		return
 	}
 	c.Timeout = e.timeout
@@ -779,12 +778,12 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	up := float64(1)
 	stats, err := c.Stats()
 	if err != nil {
-		level.Error(e.logger).Log("msg", "Failed to collect stats from memcached", "err", err)
+		e.logger.Error("Failed to collect stats from memcached", "err", err)
 		up = 0
 	}
 	statsSettings, err := c.StatsSettings()
 	if err != nil {
-		level.Error(e.logger).Log("msg", "Could not query stats settings", "err", err)
+		e.logger.Error("Could not query stats settings", "err", err)
 		up = 0
 	}
 
@@ -857,11 +856,11 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 			if cas, casErr := sum(s, "cas_misses", "cas_hits", "cas_badval"); casErr == nil {
 				ch <- prometheus.MustNewConstMetric(e.commands, prometheus.CounterValue, setCmd-cas, "set", "hit")
 			} else {
-				level.Error(e.logger).Log("msg", "Failed to parse cas", "err", casErr)
+				e.logger.Error("Failed to parse cas", "err", casErr)
 				parseError = casErr
 			}
 		} else {
-			level.Error(e.logger).Log("msg", "Failed to parse set", "err", err)
+			e.logger.Error("Failed to parse set", "err", err)
 			parseError = err
 		}
 
@@ -973,11 +972,11 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 				if slabCas, slabCasErr := sum(v, "cas_hits", "cas_badval"); slabCasErr == nil {
 					ch <- prometheus.MustNewConstMetric(e.slabsCommands, prometheus.CounterValue, slabSetCmd-slabCas, slab, "set", "hit")
 				} else {
-					level.Error(e.logger).Log("msg", "Failed to parse cas", "err", slabCasErr)
+					e.logger.Error("Failed to parse cas", "err", slabCasErr)
 					parseError = slabCasErr
 				}
 			} else {
-				level.Error(e.logger).Log("msg", "Failed to parse set", "err", err)
+				e.logger.Error("Failed to parse set", "err", err)
 				parseError = err
 			}
 
@@ -1038,7 +1037,7 @@ func (e *Exporter) parseTimevalAndNewMetric(ch chan<- prometheus.Metric, desc *p
 	return e.extractValueAndNewMetric(ch, desc, valueType, parseTimeval, stats, key, labelValues...)
 }
 
-func (e *Exporter) extractValueAndNewMetric(ch chan<- prometheus.Metric, desc *prometheus.Desc, valueType prometheus.ValueType, f func(map[string]string, string, log.Logger) (float64, error), stats map[string]string, key string, labelValues ...string) error {
+func (e *Exporter) extractValueAndNewMetric(ch chan<- prometheus.Metric, desc *prometheus.Desc, valueType prometheus.ValueType, f func(map[string]string, string, *slog.Logger) (float64, error), stats map[string]string, key string, labelValues ...string) error {
 	v, err := f(stats, key, e.logger)
 	if err == errKeyNotFound {
 		return nil
@@ -1051,25 +1050,25 @@ func (e *Exporter) extractValueAndNewMetric(ch chan<- prometheus.Metric, desc *p
 	return nil
 }
 
-func parse(stats map[string]string, key string, logger log.Logger) (float64, error) {
+func parse(stats map[string]string, key string, logger *slog.Logger) (float64, error) {
 	value, ok := stats[key]
 	if !ok {
-		level.Debug(logger).Log("msg", "Key not found", "key", key)
+		logger.Debug("Key not found", "key", key)
 		return 0, errKeyNotFound
 	}
 
 	v, err := strconv.ParseFloat(value, 64)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to parse", "key", key, "value", value, "err", err)
+		logger.Error("Failed to parse", "key", key, "value", value, "err", err)
 		return 0, err
 	}
 	return v, nil
 }
 
-func parseBool(stats map[string]string, key string, logger log.Logger) (float64, error) {
+func parseBool(stats map[string]string, key string, logger *slog.Logger) (float64, error) {
 	value, ok := stats[key]
 	if !ok {
-		level.Debug(logger).Log("msg", "Key not found", "key", key)
+		logger.Debug("Key not found", "key", key)
 		return 0, errKeyNotFound
 	}
 
@@ -1079,33 +1078,33 @@ func parseBool(stats map[string]string, key string, logger log.Logger) (float64,
 	case "no":
 		return 0, nil
 	default:
-		level.Error(logger).Log("msg", "Failed to parse", "key", key, "value", value)
+		logger.Error("Failed to parse", "key", key, "value", value)
 		return 0, errors.New("failed parse a bool value")
 	}
 }
 
-func parseTimeval(stats map[string]string, key string, logger log.Logger) (float64, error) {
+func parseTimeval(stats map[string]string, key string, logger *slog.Logger) (float64, error) {
 	value, ok := stats[key]
 	if !ok {
-		level.Debug(logger).Log("msg", "Key not found", "key", key)
+		logger.Debug("Key not found", "key", key)
 		return 0, errKeyNotFound
 	}
 	values := strings.Split(value, ".")
 
 	if len(values) != 2 {
-		level.Error(logger).Log("msg", "Failed to parse", "key", key, "value", value)
+		logger.Error("Failed to parse", "key", key, "value", value)
 		return 0, errors.New("failed parse a timeval value")
 	}
 
 	seconds, err := strconv.ParseFloat(values[0], 64)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to parse", "key", key, "value", value, "err", err)
+		logger.Error("Failed to parse", "key", key, "value", value, "err", err)
 		return 0, errors.New("failed parse a timeval value")
 	}
 
 	microseconds, err := strconv.ParseFloat(values[1], 64)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to parse", "key", key, "value", value, "err", err)
+		logger.Error("Failed to parse", "key", key, "value", value, "err", err)
 		return 0, errors.New("failed parse a timeval value")
 	}
 

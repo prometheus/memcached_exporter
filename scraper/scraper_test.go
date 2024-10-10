@@ -20,14 +20,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
+	"github.com/prometheus/common/promslog"
 )
 
 func TestHandler(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		t.Parallel()
 
-		s := New(1*time.Second, log.NewNopLogger(), nil)
+		s := New(1*time.Second, promslog.NewNopLogger(), nil)
 
 		req, err := http.NewRequest("GET", "/?target=127.0.0.1:11211", nil)
 
@@ -55,7 +55,7 @@ func TestHandler(t *testing.T) {
 	t.Run("No target", func(t *testing.T) {
 		t.Parallel()
 
-		s := New(1*time.Second, log.NewNopLogger(), nil)
+		s := New(1*time.Second, promslog.NewNopLogger(), nil)
 
 		req, err := http.NewRequest("GET", "/", nil)
 
