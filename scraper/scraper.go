@@ -15,18 +15,17 @@ package scraper
 
 import (
 	"crypto/tls"
+	"log/slog"
 	"net/http"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/memcached_exporter/pkg/exporter"
 )
 
 type Scraper struct {
-	logger    log.Logger
+	logger    *slog.Logger
 	timeout   time.Duration
 	tlsConfig *tls.Config
 
@@ -34,8 +33,8 @@ type Scraper struct {
 	scrapeErrors prometheus.Counter
 }
 
-func New(timeout time.Duration, logger log.Logger, tlsConfig *tls.Config) *Scraper {
-	level.Debug(logger).Log("msg", "Started scrapper")
+func New(timeout time.Duration, logger *slog.Logger, tlsConfig *tls.Config) *Scraper {
+	logger.Debug("Started scrapper")
 	return &Scraper{
 		logger:    logger,
 		timeout:   timeout,
@@ -54,12 +53,12 @@ func New(timeout time.Duration, logger log.Logger, tlsConfig *tls.Config) *Scrap
 func (s *Scraper) Handler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		target := r.URL.Query().Get("target")
-		level.Debug(s.logger).Log("msg", "scrapping memcached", "target", target)
+		s.logger.Debug("scrapping memcached", "target", target)
 		s.scrapeCount.Inc()
 
 		if target == "" {
 			errorStr := "'target' parameter must be specified"
-			level.Warn(s.logger).Log("msg", errorStr)
+			s.logger.Warn(errorStr)
 			http.Error(w, errorStr, http.StatusBadRequest)
 			s.scrapeErrors.Inc()
 			return
