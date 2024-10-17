@@ -45,6 +45,8 @@ The exporter collects a number of statistics from the server:
 # TYPE memcached_current_connections gauge
 # HELP memcached_current_items Current number of items stored by this instance.
 # TYPE memcached_current_items gauge
+# HELP memcached_direct_reclaims_total Times worker threads had to directly reclaim or evict items.
+# TYPE memcached_direct_reclaims_total counter
 # HELP memcached_items_evicted_total Total number of valid items removed from cache to free memory for new items.
 # TYPE memcached_items_evicted_total counter
 # HELP memcached_items_reclaimed_total Total number of times an entry was stored using memory from an expired entry.

@@ -78,6 +78,7 @@ type Exporter struct {
 	lruCrawlerMovesToCold    *prometheus.Desc
 	lruCrawlerMovesToWarm    *prometheus.Desc
 	lruCrawlerMovesWithinLru *prometheus.Desc
+	directReclaims           *prometheus.Desc
 	malloced                 *prometheus.Desc
 	itemsNumber              *prometheus.Desc
 	itemsAge                 *prometheus.Desc
@@ -273,6 +274,12 @@ func New(server string, timeout time.Duration, logger *slog.Logger, tlsConfig *t
 		itemStoreNoMemory: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, "", "item_no_memory_total"),
 			"The number of times an item could not be stored due to no more memory.",
+			nil,
+			nil,
+		),
+		directReclaims: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "direct_reclaims_total"),
+			"Times worker threads had to directly reclaim or evict items.",
 			nil,
 			nil,
 		),
@@ -704,6 +711,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.lruHotMaxAgeFactor
 	ch <- e.lruWarmMaxAgeFactor
 	ch <- e.lruCrawlerStarts
+	ch <- e.directReclaims
 	ch <- e.lruCrawlerReclaimed
 	ch <- e.lruCrawlerItemsChecked
 	ch <- e.lruCrawlerMovesToCold
@@ -912,6 +920,7 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 			e.parseAndNewMetric(ch, e.itemStoreTooLarge, prometheus.CounterValue, s, "store_too_large"),
 			e.parseAndNewMetric(ch, e.itemStoreNoMemory, prometheus.CounterValue, s, "store_no_memory"),
 			e.parseAndNewMetric(ch, e.lruCrawlerStarts, prometheus.CounterValue, s, "lru_crawler_starts"),
+			e.parseAndNewMetric(ch, e.directReclaims, prometheus.CounterValue, s, "direct_reclaims"),
 			e.parseAndNewMetric(ch, e.lruCrawlerItemsChecked, prometheus.CounterValue, s, "crawler_items_checked"),
 			e.parseAndNewMetric(ch, e.lruCrawlerReclaimed, prometheus.CounterValue, s, "crawler_reclaimed"),
 			e.parseAndNewMetric(ch, e.lruCrawlerMovesToCold, prometheus.CounterValue, s, "moves_to_cold"),
