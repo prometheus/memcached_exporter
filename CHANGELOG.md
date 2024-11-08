@@ -1,3 +1,8 @@
+## 0.15.0 / 2024-11-08
+
+* [CHANGE] Update dependencies
+* [ENHANCEMENT] Add metric for `direct_reclaims` #227
+
 ## 0.14.4 / 2024-06-24
 
 * [CHANGE] Update dependencies
