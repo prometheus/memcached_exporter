@@ -6,10 +6,10 @@ executors:
   # Whenever the Go version is updated here, .promu.yml should also be updated.
   golang:
     docker:
-      - image: cimg/go:1.23
+      - image: cimg/go:1.24.0
   golang_memcached:
     docker:
-      - image: cimg/go:1.23
+      - image: cimg/go:1.24.0
       - image: memcached
 jobs:
   test:
