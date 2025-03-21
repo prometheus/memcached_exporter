@@ -1,3 +1,9 @@
+## 0.15.2 / 2025-03-21
+
+* [CHANGE] Update dependencies
+
+This addresses CVE-2025-22870
+
 ## 0.15.1 / 2025-02-24
 
 * [CHANGE] Update dependencies
