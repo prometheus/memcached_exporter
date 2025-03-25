@@ -1,3 +1,9 @@
+## 0.15.1 / 2025-02-24
+
+* [CHANGE] Update dependencies
+
+This addresses CVE-2024-45337 and CVE-2024-45338
+
 ## 0.15.0 / 2024-11-08
 
 * [CHANGE] Update dependencies
