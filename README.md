@@ -87,8 +87,34 @@ The exporter collects a number of statistics from the server:
 # TYPE memcached_malloced_bytes gauge
 # HELP memcached_max_connections Maximum number of clients allowed.
 # TYPE memcached_max_connections gauge
+# HELP memcached_proxy_backend_failed Number of backends currently in a failed state.
+# TYPE memcached_proxy_backend_failed gauge
+# HELP memcached_proxy_backend_marked_bad_total Total times a backend was marked unhealthy by the proxy.
+# TYPE memcached_proxy_backend_marked_bad_total counter
+# HELP memcached_proxy_backend_total Number of backend servers configured in proxy mode.
+# TYPE memcached_proxy_backend_total gauge
+# HELP memcached_proxy_config_reload_fails_total Total failed attempts to reload the proxy configuration.
+# TYPE memcached_proxy_config_reload_fails_total counter
+# HELP memcached_proxy_config_reloads_total Total attempts to reload the proxy configuration.
+# TYPE memcached_proxy_config_reloads_total counter
+# HELP memcached_proxy_config_cron_fails_total Total errors from the proxy’s Lua cron hooks.
+# TYPE memcached_proxy_config_cron_fails_total counter
+# HELP memcached_proxy_config_cron_runs_total Total times the proxy’s Lua cron hooks have run.
+# TYPE memcached_proxy_config_cron_runs_total counter
+# HELP memcached_proxy_conn_errors_total Total number of backend connection errors in proxy mode.
+# TYPE memcached_proxy_conn_errors_total counter
+# HELP memcached_proxy_conn_oom_total Total number of times the proxy ran out of memory allocating a connection.
+# TYPE memcached_proxy_conn_oom_total counter
+# HELP memcached_proxy_conn_requests_total Total number of times the proxy opened a backend connection.
+# TYPE memcached_proxy_conn_requests_total counter
+# HELP memcached_proxy_req_active Number of in-flight requests currently forwarded by the proxy.
+# TYPE memcached_proxy_req_active gauge
+# HELP memcached_proxy_request_failed_depth_total Total requests dropped due to backend depth limits.
+# TYPE memcached_proxy_request_failed_depth_total counter
 # HELP memcached_read_bytes_total Total number of bytes read by this server from network.
 # TYPE memcached_read_bytes_total counter
+# HELP memcached_round_robin_fallback_total Total times the proxy fell back to round-robin routing.
+# TYPE memcached_round_robin_fallback_total counter
 # HELP memcached_slab_chunk_size_bytes Number of bytes allocated to each chunk within this slab class.
 # TYPE memcached_slab_chunk_size_bytes gauge
 # HELP memcached_slab_chunks_free Number of chunks not yet allocated items.
@@ -149,6 +175,8 @@ The exporter collects a number of statistics from the server:
 # TYPE memcached_slab_warm_items gauge
 # HELP memcached_time_seconds current UNIX time according to the server.
 # TYPE memcached_time_seconds gauge
+# HELP memcached_unexpected_napi_ids_total Total unexpected internal event-loop IDs seen by the proxy.
+# TYPE memcached_unexpected_napi_ids_total counter
 # HELP memcached_up Could the memcached server be reached.
 # TYPE memcached_up gauge
 # HELP memcached_uptime_seconds Number of seconds since the server started.
