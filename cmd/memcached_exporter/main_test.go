@@ -116,15 +116,15 @@ func TestAcceptanceSingleInstance(t *testing.T) {
 
 	warmUpMemcached(t, client)
 
-	stats_settings, err := client.StatsSettings()
+	statsSettings, err := client.StatsSettings()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	use_temp_lru := false
-	for _, t := range stats_settings {
+	useTempLRU := false
+	for _, t := range statsSettings {
 		if t["temp_lru"] == "true" {
-			use_temp_lru = true
+			useTempLRU = true
 		}
 	}
 
@@ -133,9 +133,9 @@ func TestAcceptanceSingleInstance(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	memcache_version := ""
+	memcacheVersion := ""
 	for _, t := range stats {
-		memcache_version = t.Stats["version"]
+		memcacheVersion = t.Stats["version"]
 	}
 
 	resp, err := http.Get("http://localhost:9150/metrics")
@@ -174,19 +174,19 @@ func TestAcceptanceSingleInstance(t *testing.T) {
 		`memcached_slab_mem_requested_bytes{slab="5"} 194`,
 	}
 
-	if use_temp_lru == true {
+	if useTempLRU == true {
 		tests = append(tests,
 			`memcached_slab_temporary_items{slab="1"}`,
 			`memcached_slab_lru_hits_total{lru="temporary",slab="5"}`,
 			`memcached_slab_temporary_items{slab="5"}`)
 	}
 
-	memcache_version_major_minor, err := strconv.ParseFloat(memcache_version[0:3], 64)
+	memcacheVersionMajorMinor, err := strconv.ParseFloat(memcacheVersion[0:3], 64)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if memcache_version_major_minor >= 1.5 {
+	if memcacheVersionMajorMinor >= 1.5 {
 		tests = append(tests,
 			`memcached_slab_lru_hits_total{lru="hot",slab="1"}`,
 			`memcached_slab_lru_hits_total{lru="cold",slab="1"}`,
@@ -254,15 +254,15 @@ func TestAcceptanceScrapper(t *testing.T) {
 
 	warmUpMemcached(t, client)
 
-	stats_settings, err := client.StatsSettings()
+	statsSettings, err := client.StatsSettings()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	use_temp_lru := false
-	for _, t := range stats_settings {
+	useTempLRU := false
+	for _, t := range statsSettings {
 		if t["temp_lru"] == "true" {
-			use_temp_lru = true
+			useTempLRU = true
 		}
 	}
 
@@ -271,9 +271,9 @@ func TestAcceptanceScrapper(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	memcache_version := ""
+	memcacheVersion := ""
 	for _, t := range stats {
-		memcache_version = t.Stats["version"]
+		memcacheVersion = t.Stats["version"]
 	}
 
 	resp, err := http.Get("http://localhost:9150/scrape?target=" + addr)
@@ -312,19 +312,19 @@ func TestAcceptanceScrapper(t *testing.T) {
 		`memcached_slab_mem_requested_bytes{slab="5"} 194`,
 	}
 
-	if use_temp_lru == true {
+	if useTempLRU == true {
 		tests = append(tests,
 			`memcached_slab_temporary_items{slab="1"}`,
 			`memcached_slab_lru_hits_total{lru="temporary",slab="5"}`,
 			`memcached_slab_temporary_items{slab="5"}`)
 	}
 
-	memcache_version_major_minor, err := strconv.ParseFloat(memcache_version[0:3], 64)
+	memcacheVersionMajorMinor, err := strconv.ParseFloat(memcacheVersion[0:3], 64)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if memcache_version_major_minor >= 1.5 {
+	if memcacheVersionMajorMinor >= 1.5 {
 		tests = append(tests,
 			`memcached_slab_lru_hits_total{lru="hot",slab="1"}`,
 			`memcached_slab_lru_hits_total{lru="cold",slab="1"}`,

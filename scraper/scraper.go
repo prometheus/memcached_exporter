@@ -66,7 +66,7 @@ func (s *Scraper) Handler() http.HandlerFunc {
 
 		e := exporter.New(target, s.timeout, s.logger, s.tlsConfig)
 		registry := prometheus.NewRegistry()
-		registry.Register(e)
+		registry.MustRegister(e)
 
 		promhttp.HandlerFor(
 			registry, promhttp.HandlerOpts{ErrorHandling: promhttp.ContinueOnError},
