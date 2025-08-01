@@ -130,6 +130,20 @@ type Exporter struct {
 	extstoreBytesFragmented  *prometheus.Desc
 	extstoreIOQueueDepth     *prometheus.Desc
 	acceptingConnections     *prometheus.Desc
+	proxyConnRequests        *prometheus.Desc
+	proxyConnErrors          *prometheus.Desc
+	proxyConnOOM             *prometheus.Desc
+	proxyReqActive           *prometheus.Desc
+	proxyConfigReloads       *prometheus.Desc
+	proxyConfigReloadFails   *prometheus.Desc
+	proxyConfigCronRuns      *prometheus.Desc
+	proxyConfigCronFails     *prometheus.Desc
+	proxyBackendTotal        *prometheus.Desc
+	proxyBackendMarkedBad    *prometheus.Desc
+	proxyBackendFailed       *prometheus.Desc
+	proxyRequestFailedDepth  *prometheus.Desc
+	roundRobinFallback       *prometheus.Desc
+	unexpectedNapiIDs        *prometheus.Desc
 }
 
 // New returns an initialized exporter.
@@ -673,6 +687,76 @@ func New(server string, timeout time.Duration, logger *slog.Logger, tlsConfig *t
 			nil,
 			nil,
 		),
+		proxyConnRequests: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "proxy_conn_requests_total"),
+			"Total number of times the proxy opened a backend connection.",
+			nil, nil,
+		),
+		proxyConnErrors: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "proxy_conn_errors_total"),
+			"Total number of backend connection errors in proxy mode.",
+			nil, nil,
+		),
+		proxyConnOOM: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "proxy_conn_oom_total"),
+			"Total number of times the proxy ran out of memory allocating a connection.",
+			nil, nil,
+		),
+		proxyReqActive: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "proxy_req_active"),
+			"Number of in-flight requests currently forwarded by the proxy.",
+			nil, nil,
+		),
+		proxyConfigReloads: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "proxy_config_reloads_total"),
+			"Total attempts to reload the proxy configuration.",
+			nil, nil,
+		),
+		proxyConfigReloadFails: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "proxy_config_reload_fails_total"),
+			"Total failed attempts to reload the proxy configuration.",
+			nil, nil,
+		),
+		proxyConfigCronRuns: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "proxy_config_cron_runs_total"),
+			"Total times the proxy’s Lua cron hooks have run.",
+			nil, nil,
+		),
+		proxyConfigCronFails: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "proxy_config_cron_fails_total"),
+			"Total errors from the proxy’s Lua cron hooks.",
+			nil, nil,
+		),
+		proxyBackendTotal: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "proxy_backend_total"),
+			"Number of backend servers configured in proxy mode.",
+			nil, nil,
+		),
+		proxyBackendMarkedBad: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "proxy_backend_marked_bad_total"),
+			"Total times a backend was marked unhealthy by the proxy.",
+			nil, nil,
+		),
+		proxyBackendFailed: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "proxy_backend_failed"),
+			"Number of backends currently in a failed state.",
+			nil, nil,
+		),
+		proxyRequestFailedDepth: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "proxy_request_failed_depth_total"),
+			"Total requests dropped due to backend depth limits.",
+			nil, nil,
+		),
+		roundRobinFallback: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "round_robin_fallback_total"),
+			"Total times the proxy fell back to round-robin routing.",
+			nil, nil,
+		),
+		unexpectedNapiIDs: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "unexpected_napi_ids_total"),
+			"Total unexpected internal event-loop IDs seen by the proxy.",
+			nil, nil,
+		),
 	}
 }
 
@@ -769,6 +853,20 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.extstoreBytesLimit
 	ch <- e.extstoreIOQueueDepth
 	ch <- e.acceptingConnections
+	ch <- e.proxyConnRequests
+	ch <- e.proxyConnErrors
+	ch <- e.proxyConnOOM
+	ch <- e.proxyReqActive
+	ch <- e.proxyConfigReloads
+	ch <- e.proxyConfigReloadFails
+	ch <- e.proxyConfigCronRuns
+	ch <- e.proxyConfigCronFails
+	ch <- e.proxyBackendTotal
+	ch <- e.proxyBackendMarkedBad
+	ch <- e.proxyBackendFailed
+	ch <- e.proxyRequestFailedDepth
+	ch <- e.roundRobinFallback
+	ch <- e.unexpectedNapiIDs
 }
 
 // Collect fetches the statistics from the configured memcached server, and
@@ -895,6 +993,30 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 				e.parseAndNewMetric(ch, e.extstoreBytesFragmented, prometheus.GaugeValue, s, "extstore_bytes_fragmented"),
 				e.parseAndNewMetric(ch, e.extstoreBytesLimit, prometheus.GaugeValue, s, "extstore_limit_maxbytes"),
 				e.parseAndNewMetric(ch, e.extstoreIOQueueDepth, prometheus.GaugeValue, s, "extstore_io_queue"),
+			)
+			if err != nil {
+				parseError = err
+			}
+		}
+
+		// proxy stats are only included if memcached server is in proxy mode. Take the presence of the
+		// proxy_backend_total key as a signal that they all should be there and do the parsing
+		if _, ok := s["proxy_backend_total"]; ok {
+			err = firstError(
+				e.parseAndNewMetric(ch, e.proxyConnRequests, prometheus.CounterValue, s, "proxy_conn_requests"),
+				e.parseAndNewMetric(ch, e.proxyConnErrors, prometheus.CounterValue, s, "proxy_conn_errors"),
+				e.parseAndNewMetric(ch, e.proxyConnOOM, prometheus.CounterValue, s, "proxy_conn_oom"),
+				e.parseAndNewMetric(ch, e.proxyReqActive, prometheus.GaugeValue, s, "proxy_req_active"),
+				e.parseAndNewMetric(ch, e.proxyConfigReloads, prometheus.CounterValue, s, "proxy_config_reloads"),
+				e.parseAndNewMetric(ch, e.proxyConfigReloadFails, prometheus.CounterValue, s, "proxy_config_reload_fails"),
+				e.parseAndNewMetric(ch, e.proxyConfigCronRuns, prometheus.CounterValue, s, "proxy_config_cron_runs"),
+				e.parseAndNewMetric(ch, e.proxyConfigCronFails, prometheus.CounterValue, s, "proxy_config_cron_fails"),
+				e.parseAndNewMetric(ch, e.proxyBackendTotal, prometheus.GaugeValue, s, "proxy_backend_total"),
+				e.parseAndNewMetric(ch, e.proxyBackendMarkedBad, prometheus.CounterValue, s, "proxy_backend_marked_bad"),
+				e.parseAndNewMetric(ch, e.proxyBackendFailed, prometheus.GaugeValue, s, "proxy_backend_failed"),
+				e.parseAndNewMetric(ch, e.proxyRequestFailedDepth, prometheus.CounterValue, s, "proxy_request_failed_depth"),
+				e.parseAndNewMetric(ch, e.roundRobinFallback, prometheus.CounterValue, s, "round_robin_fallback"),
+				e.parseAndNewMetric(ch, e.unexpectedNapiIDs, prometheus.CounterValue, s, "unexpected_napi_ids"),
 			)
 			if err != nil {
 				parseError = err
