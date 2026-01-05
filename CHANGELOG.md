@@ -1,3 +1,7 @@
+## 0.15.5 / 2026-01-05
+
+* [CHANGE] Update dependencies
+
 ## 0.15.4 / 2025-10-14
 
 * [CHANGE] Update dependencies
