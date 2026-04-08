@@ -31,7 +31,7 @@ jobs:
       - run: git diff --exit-code
 
   build:
-    name: Build node_exporter for all architectures
+    name: Build memcached_exporter for all architectures
     runs-on: ubuntu-latest
     strategy:
       matrix:
