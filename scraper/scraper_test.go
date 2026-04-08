@@ -14,8 +14,10 @@
 package scraper
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -25,11 +27,17 @@ import (
 
 func TestHandler(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
+		addr := "localhost:11211"
+		// MEMCACHED_PORT might be set by a linked memcached docker container.
+		if env := os.Getenv("MEMCACHED_PORT"); env != "" {
+			addr = strings.TrimPrefix(env, "tcp://")
+		}
+
 		t.Parallel()
 
 		s := New(1*time.Second, promslog.NewNopLogger(), nil)
 
-		req, err := http.NewRequest("GET", "/?target=127.0.0.1:11211", nil)
+		req, err := http.NewRequest("GET", fmt.Sprintf("/?target=%s", addr), nil)
 
 		if err != nil {
 			t.Fatal(err)
