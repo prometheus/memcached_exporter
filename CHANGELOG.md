@@ -1,3 +1,7 @@
+## 0.16.0 / 2026-04-08
+
+* [FEATURE] Export proxy mode metrics #267
+
 ## 0.15.5 / 2026-01-05
 
 * [CHANGE] Update dependencies
