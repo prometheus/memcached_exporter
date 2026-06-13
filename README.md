@@ -31,6 +31,14 @@ The exporter collects a number of statistics from the server.
 
 For supported metrics see the [metrics documentation](metrics.md).
 
+The per-slab-class metrics (`memcached_slab_*`) are high-cardinality and can
+dominate the number of exported series on servers with many slab classes. They
+are enabled by default but can be turned off with `--no-collector.slab`:
+
+```sh
+./memcached_exporter --no-collector.slab
+```
+
 ## TLS and basic authentication
 
 The Memcached Exporter supports TLS and basic authentication.
