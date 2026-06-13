@@ -1,3 +1,7 @@
+## Unreleased
+
+* [FEATURE] Add `--collector.slab` flag to toggle high-cardinality `memcached_slab_*` metrics #178
+
 ## 0.16.0 / 2026-04-08
 
 * [FEATURE] Export proxy mode metrics #267

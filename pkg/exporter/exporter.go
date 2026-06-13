@@ -36,10 +36,11 @@ var errKeyNotFound = errors.New("key not found")
 
 // Exporter collects metrics from a memcached server.
 type Exporter struct {
-	address   string
-	timeout   time.Duration
-	logger    *slog.Logger
-	tlsConfig *tls.Config
+	address    string
+	timeout    time.Duration
+	logger     *slog.Logger
+	tlsConfig  *tls.Config
+	enableSlab bool
 
 	up                       *prometheus.Desc
 	uptime                   *prometheus.Desc
@@ -147,12 +148,13 @@ type Exporter struct {
 }
 
 // New returns an initialized exporter.
-func New(server string, timeout time.Duration, logger *slog.Logger, tlsConfig *tls.Config) *Exporter {
+func New(server string, timeout time.Duration, logger *slog.Logger, tlsConfig *tls.Config, enableSlab bool) *Exporter {
 	return &Exporter{
-		address:   server,
-		timeout:   timeout,
-		logger:    logger,
-		tlsConfig: tlsConfig,
+		address:    server,
+		timeout:    timeout,
+		logger:     logger,
+		tlsConfig:  tlsConfig,
+		enableSlab: enableSlab,
 		up: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, "", "up"),
 			"Could the memcached server be reached.",
@@ -1084,6 +1086,10 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 					parseError = err
 				}
 			}
+		}
+
+		if !e.enableSlab {
+			continue
 		}
 
 		for slab, v := range t.Slabs {
