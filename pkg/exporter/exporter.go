@@ -1088,51 +1088,60 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 			}
 		}
 
-		if !e.enableSlab {
-			continue
-		}
-
-		for slab, v := range t.Slabs {
-			slab := strconv.Itoa(slab)
-
-			for _, op := range []string{"get", "delete", "incr", "decr", "cas", "touch"} {
-				if err := e.parseAndNewMetric(ch, e.slabsCommands, prometheus.CounterValue, v, op+"_hits", slab, op, "hit"); err != nil {
-					parseError = err
-				}
-			}
-			if err := e.parseAndNewMetric(ch, e.slabsCommands, prometheus.CounterValue, v, "cas_badval", slab, "cas", "badval"); err != nil {
-				parseError = err
-			}
-
-			slabSetCmd, err := parse(v, "cmd_set", e.logger)
-			if err == nil {
-				if slabCas, slabCasErr := sum(v, "cas_hits", "cas_badval"); slabCasErr == nil {
-					ch <- prometheus.MustNewConstMetric(e.slabsCommands, prometheus.CounterValue, slabSetCmd-slabCas, slab, "set", "hit")
-				} else {
-					e.logger.Error("Failed to parse cas", "err", slabCasErr)
-					parseError = slabCasErr
-				}
-			} else {
-				e.logger.Error("Failed to parse set", "err", err)
-				parseError = err
-			}
-
-			err = firstError(
-				e.parseAndNewMetric(ch, e.slabsChunkSize, prometheus.GaugeValue, v, "chunk_size", slab),
-				e.parseAndNewMetric(ch, e.slabsChunksPerPage, prometheus.GaugeValue, v, "chunks_per_page", slab),
-				e.parseAndNewMetric(ch, e.slabsCurrentPages, prometheus.GaugeValue, v, "total_pages", slab),
-				e.parseAndNewMetric(ch, e.slabsCurrentChunks, prometheus.GaugeValue, v, "total_chunks", slab),
-				e.parseAndNewMetric(ch, e.slabsChunksUsed, prometheus.GaugeValue, v, "used_chunks", slab),
-				e.parseAndNewMetric(ch, e.slabsChunksFree, prometheus.GaugeValue, v, "free_chunks", slab),
-				e.parseAndNewMetric(ch, e.slabsChunksFreeEnd, prometheus.GaugeValue, v, "free_chunks_end", slab),
-				e.parseAndNewMetric(ch, e.slabsMemRequested, prometheus.GaugeValue, v, "mem_requested", slab),
-			)
-			if err != nil {
+		if e.enableSlab {
+			if err := e.collectSlabMetrics(ch, t.Slabs); err != nil {
 				parseError = err
 			}
 		}
 	}
 
+	return parseError
+}
+
+// collectSlabMetrics emits the per-slab-class metrics for a single memcached
+// instance. These are high cardinality, so they are only collected when the
+// slab collector is enabled.
+func (e *Exporter) collectSlabMetrics(ch chan<- prometheus.Metric, slabs map[int]map[string]string) error {
+	var parseError error
+	for slab, v := range slabs {
+		slab := strconv.Itoa(slab)
+
+		for _, op := range []string{"get", "delete", "incr", "decr", "cas", "touch"} {
+			if err := e.parseAndNewMetric(ch, e.slabsCommands, prometheus.CounterValue, v, op+"_hits", slab, op, "hit"); err != nil {
+				parseError = err
+			}
+		}
+		if err := e.parseAndNewMetric(ch, e.slabsCommands, prometheus.CounterValue, v, "cas_badval", slab, "cas", "badval"); err != nil {
+			parseError = err
+		}
+
+		slabSetCmd, err := parse(v, "cmd_set", e.logger)
+		if err == nil {
+			if slabCas, slabCasErr := sum(v, "cas_hits", "cas_badval"); slabCasErr == nil {
+				ch <- prometheus.MustNewConstMetric(e.slabsCommands, prometheus.CounterValue, slabSetCmd-slabCas, slab, "set", "hit")
+			} else {
+				e.logger.Error("Failed to parse cas", "err", slabCasErr)
+				parseError = slabCasErr
+			}
+		} else {
+			e.logger.Error("Failed to parse set", "err", err)
+			parseError = err
+		}
+
+		err = firstError(
+			e.parseAndNewMetric(ch, e.slabsChunkSize, prometheus.GaugeValue, v, "chunk_size", slab),
+			e.parseAndNewMetric(ch, e.slabsChunksPerPage, prometheus.GaugeValue, v, "chunks_per_page", slab),
+			e.parseAndNewMetric(ch, e.slabsCurrentPages, prometheus.GaugeValue, v, "total_pages", slab),
+			e.parseAndNewMetric(ch, e.slabsCurrentChunks, prometheus.GaugeValue, v, "total_chunks", slab),
+			e.parseAndNewMetric(ch, e.slabsChunksUsed, prometheus.GaugeValue, v, "used_chunks", slab),
+			e.parseAndNewMetric(ch, e.slabsChunksFree, prometheus.GaugeValue, v, "free_chunks", slab),
+			e.parseAndNewMetric(ch, e.slabsChunksFreeEnd, prometheus.GaugeValue, v, "free_chunks_end", slab),
+			e.parseAndNewMetric(ch, e.slabsMemRequested, prometheus.GaugeValue, v, "mem_requested", slab),
+		)
+		if err != nil {
+			parseError = err
+		}
+	}
 	return parseError
 }
 
