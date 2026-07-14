@@ -1,3 +1,8 @@
+## 0.17.0 / 2026-07-14
+
+* [FEATURE] Add distroless image variant #308
+* [CHANGE] Update dependencies
+
 ## 0.16.0 / 2026-04-08
 
 * [FEATURE] Export proxy mode metrics #267
