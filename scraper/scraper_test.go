@@ -35,7 +35,7 @@ func TestHandler(t *testing.T) {
 
 		t.Parallel()
 
-		s := New(1*time.Second, promslog.NewNopLogger(), nil)
+		s := New(1*time.Second, promslog.NewNopLogger(), nil, true)
 
 		req, err := http.NewRequest("GET", fmt.Sprintf("/?target=%s", addr), nil)
 
@@ -63,7 +63,7 @@ func TestHandler(t *testing.T) {
 	t.Run("No target", func(t *testing.T) {
 		t.Parallel()
 
-		s := New(1*time.Second, promslog.NewNopLogger(), nil)
+		s := New(1*time.Second, promslog.NewNopLogger(), nil, true)
 
 		req, err := http.NewRequest("GET", "/", nil)
 

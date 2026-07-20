@@ -50,6 +50,7 @@ func main() {
 		webConfig          = webflag.AddFlags(kingpin.CommandLine, ":9150")
 		metricsPath        = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
 		scrapePath         = kingpin.Flag("web.scrape-path", "Path under which to receive scrape requests.").Default("/scrape").String()
+		enableSlab         = kingpin.Flag("collector.slab", "Enable per-slab-class metrics (memcached_slab_*). These are high-cardinality; disable with --no-collector.slab to reduce the number of exported series.").Default("true").Bool()
 	)
 
 	promslogConfig := &promslog.Config{}
@@ -95,7 +96,7 @@ func main() {
 	prometheus.MustRegister(versioncollector.NewCollector("memcached_exporter"))
 
 	if *address != "" {
-		prometheus.MustRegister(exporter.New(*address, *timeout, logger, tlsConfig))
+		prometheus.MustRegister(exporter.New(*address, *timeout, logger, tlsConfig, *enableSlab))
 	}
 
 	if *pidFile != "" {
@@ -107,7 +108,7 @@ func main() {
 	}
 
 	http.Handle(*metricsPath, promhttp.Handler())
-	scraper := scraper.New(*timeout, logger, tlsConfig)
+	scraper := scraper.New(*timeout, logger, tlsConfig, *enableSlab)
 	http.Handle(*scrapePath, scraper.Handler())
 
 	if *metricsPath != "/" && *metricsPath != "" {

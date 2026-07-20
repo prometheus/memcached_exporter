@@ -15,9 +15,11 @@ package exporter
 
 import (
 	"net"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/grobie/gomemcache/memcache"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/promslog"
 )
@@ -46,7 +48,7 @@ func TestParseStatsSettings(t *testing.T) {
 			},
 		}
 		ch := make(chan prometheus.Metric, 100)
-		e := New("", 100*time.Millisecond, promslog.NewNopLogger(), nil)
+		e := New("", 100*time.Millisecond, promslog.NewNopLogger(), nil, true)
 		if err := e.parseStatsSettings(ch, statsSettings); err != nil {
 			t.Errorf("expect return error, error: %v", err)
 		}
@@ -69,7 +71,7 @@ func TestParseStatsSettings(t *testing.T) {
 			},
 		}
 		ch := make(chan prometheus.Metric, 100)
-		e := New("", 100*time.Millisecond, promslog.NewNopLogger(), nil)
+		e := New("", 100*time.Millisecond, promslog.NewNopLogger(), nil, true)
 		if err := e.parseStatsSettings(ch, statsSettings); err == nil {
 			t.Error("expect return error but not")
 		}
@@ -92,4 +94,62 @@ func TestParseTimeval(t *testing.T) {
 			t.Error("expect return error but not")
 		}
 	})
+}
+
+func TestParseStatsSlabToggle(t *testing.T) {
+	addr, err := net.ResolveIPAddr("ip4", "127.0.0.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	stats := map[net.Addr]memcache.Stats{
+		addr: {
+			Stats: map[string]string{
+				"version":    "1.6.0",
+				"cmd_set":    "0",
+				"cas_misses": "0",
+				"cas_hits":   "0",
+				"cas_badval": "0",
+			},
+			Slabs: map[int]map[string]string{
+				1: {
+					"chunk_size":      "96",
+					"chunks_per_page": "10922",
+					"total_pages":     "1",
+					"total_chunks":    "10922",
+					"used_chunks":     "1",
+					"free_chunks":     "10921",
+					"free_chunks_end": "0",
+					"mem_requested":   "68",
+					"cmd_set":         "2",
+					"cas_hits":        "0",
+					"cas_badval":      "0",
+				},
+			},
+		},
+	}
+
+	countSlabMetrics := func(enableSlab bool) int {
+		e := New("", 100*time.Millisecond, promslog.NewNopLogger(), nil, enableSlab)
+		ch := make(chan prometheus.Metric, 100)
+		if err := e.parseStats(ch, stats); err != nil {
+			t.Fatalf("parseStats returned an error: %v", err)
+		}
+		close(ch)
+
+		var slabMetrics int
+		for m := range ch {
+			if strings.Contains(m.Desc().String(), "memcached_slab_") {
+				slabMetrics++
+			}
+		}
+		return slabMetrics
+	}
+
+	if got := countSlabMetrics(true); got == 0 {
+		t.Error("expected slab metrics to be exported when the slab collector is enabled, got none")
+	}
+	if got := countSlabMetrics(false); got != 0 {
+		t.Errorf("expected no slab metrics when the slab collector is disabled, got %d", got)
+	}
 }
