@@ -16,7 +16,7 @@ jobs:
     container:
       # Whenever the Go version is updated here, .promu.yml and .promu-cgo.yml
       # should also be updated.
-      image: quay.io/prometheus/golang-builder:1.26-base
+      image: quay.io/prometheus/golang-builder:1.27-base
     env:
       MEMCACHED_PORT: "memcached:11211"
     services:
