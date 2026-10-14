@@ -1,1 +1,1 @@
-* Tobias Schmidt <tobidt@gmail.com>
+* Ben Kochie <superq@gmail.com> @SuperQ
