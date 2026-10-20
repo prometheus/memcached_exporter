@@ -153,3 +153,87 @@ func TestParseStatsSlabToggle(t *testing.T) {
 		t.Errorf("expected no slab metrics when the slab collector is disabled, got %d", got)
 	}
 }
+
+func TestParseStatsGlobalCounters(t *testing.T) {
+	addr, err := net.ResolveIPAddr("ip4", "127.0.0.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	newStats := func(extstore bool) map[net.Addr]memcache.Stats {
+		s := map[string]string{
+			"version":               "1.6.0",
+			"cmd_set":               "0",
+			"cas_misses":            "0",
+			"cas_hits":              "0",
+			"cas_badval":            "0",
+			"get_expired":           "1",
+			"get_flushed":           "2",
+			"evicted_active":        "3",
+			"evicted_unfetched":     "4",
+			"expired_unfetched":     "5",
+			"slabs_moved":           "6",
+			"slab_reassign_running": "0",
+			"get_extstore":          "7",
+			"get_aborted_extstore":  "8",
+			"recache_from_extstore": "9",
+		}
+		if extstore {
+			s["extstore_limit_maxbytes"] = "1024"
+		}
+		return map[net.Addr]memcache.Stats{addr: {Stats: s}}
+	}
+
+	collect := func(extstore bool) string {
+		e := New("", 100*time.Millisecond, promslog.NewNopLogger(), nil, false)
+		ch := make(chan prometheus.Metric, 100)
+		if err := e.parseStats(ch, newStats(extstore)); err != nil {
+			t.Fatalf("parseStats returned an error: %v", err)
+		}
+		close(ch)
+
+		var descs strings.Builder
+		for m := range ch {
+			descs.WriteString(m.Desc().String())
+		}
+		return descs.String()
+	}
+
+	has := func(descs, name string) bool {
+		return strings.Contains(descs, `fqName: "`+name+`"`)
+	}
+
+	global := []string{
+		"memcached_get_expired_total",
+		"memcached_get_flushed_total",
+		"memcached_items_evicted_active_total",
+		"memcached_items_evicted_unfetched_total",
+		"memcached_items_expired_unfetched_total",
+		"memcached_slabs_moved_total",
+		"memcached_slab_reassign_running",
+	}
+	extstore := []string{
+		"memcached_get_extstore_total",
+		"memcached_get_aborted_extstore_total",
+		"memcached_recache_from_extstore_total",
+	}
+
+	without := collect(false)
+	for _, name := range global {
+		if !has(without, name) {
+			t.Errorf("expected %s to be exported", name)
+		}
+	}
+	for _, name := range extstore {
+		if has(without, name) {
+			t.Errorf("expected %s not to be exported without extstore", name)
+		}
+	}
+
+	with := collect(true)
+	for _, name := range extstore {
+		if !has(with, name) {
+			t.Errorf("expected %s to be exported with extstore", name)
+		}
+	}
+}
