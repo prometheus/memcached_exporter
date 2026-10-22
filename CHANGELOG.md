@@ -1,6 +1,6 @@
 ## Unreleased
 
-* [FEATURE] Export get_expired, get_flushed, extstore get and recache, unfetched, evicted_active, and slab rebalancer stats #93
+* [FEATURE] Export get_expired, get_flushed, extstore get and recache, unfetched, evicted_active, and slab rebalancer stats #347
 
 ## 0.17.0 / 2026-08-14
 
