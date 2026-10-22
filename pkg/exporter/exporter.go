@@ -80,6 +80,13 @@ type Exporter struct {
 	lruCrawlerMovesToWarm    *prometheus.Desc
 	lruCrawlerMovesWithinLru *prometheus.Desc
 	directReclaims           *prometheus.Desc
+	getExpired               *prometheus.Desc
+	getFlushed               *prometheus.Desc
+	evictedActive            *prometheus.Desc
+	evictedUnfetched         *prometheus.Desc
+	expiredUnfetched         *prometheus.Desc
+	slabsMoved               *prometheus.Desc
+	slabReassignRunning      *prometheus.Desc
 	malloced                 *prometheus.Desc
 	itemsNumber              *prometheus.Desc
 	itemsAge                 *prometheus.Desc
@@ -130,6 +137,9 @@ type Exporter struct {
 	extstoreBytesLimit       *prometheus.Desc
 	extstoreBytesFragmented  *prometheus.Desc
 	extstoreIOQueueDepth     *prometheus.Desc
+	extstoreGets             *prometheus.Desc
+	extstoreGetsAborted      *prometheus.Desc
+	extstoreRecaches         *prometheus.Desc
 	acceptingConnections     *prometheus.Desc
 	proxyConnRequests        *prometheus.Desc
 	proxyConnErrors          *prometheus.Desc
@@ -296,6 +306,48 @@ func New(server string, timeout time.Duration, logger *slog.Logger, tlsConfig *t
 		directReclaims: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, "", "direct_reclaims_total"),
 			"Times worker threads had to directly reclaim or evict items.",
+			nil,
+			nil,
+		),
+		getExpired: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "get_expired_total"),
+			"Total number of get requests for items that had expired.",
+			nil,
+			nil,
+		),
+		getFlushed: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "get_flushed_total"),
+			"Total number of get requests for items flushed by flush_all.",
+			nil,
+			nil,
+		),
+		evictedActive: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "items_evicted_active_total"),
+			"Total number of items evicted while still active (fetched recently).",
+			nil,
+			nil,
+		),
+		evictedUnfetched: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "items_evicted_unfetched_total"),
+			"Total number of items evicted that were never fetched.",
+			nil,
+			nil,
+		),
+		expiredUnfetched: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "items_expired_unfetched_total"),
+			"Total number of items expired that were never fetched.",
+			nil,
+			nil,
+		),
+		slabsMoved: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "slabs_moved_total"),
+			"Total number of slab pages moved by the slab rebalancer.",
+			nil,
+			nil,
+		),
+		slabReassignRunning: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "slab_reassign_running"),
+			"Whether the slab rebalancer is running (1) or not (0).",
 			nil,
 			nil,
 		),
@@ -683,6 +735,24 @@ func New(server string, timeout time.Duration, logger *slog.Logger, tlsConfig *t
 			nil,
 			nil,
 		),
+		extstoreGets: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "get_extstore_total"),
+			"Total number of get requests served from extstore.",
+			nil,
+			nil,
+		),
+		extstoreGetsAborted: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "get_aborted_extstore_total"),
+			"Total number of get requests to extstore that were aborted.",
+			nil,
+			nil,
+		),
+		extstoreRecaches: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "", "recache_from_extstore_total"),
+			"Total number of items recached from extstore into memory.",
+			nil,
+			nil,
+		),
 		acceptingConnections: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, "", "accepting_connections"),
 			"The Memcached server is currently accepting new connections.",
@@ -798,6 +868,13 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.lruWarmMaxAgeFactor
 	ch <- e.lruCrawlerStarts
 	ch <- e.directReclaims
+	ch <- e.getExpired
+	ch <- e.getFlushed
+	ch <- e.evictedActive
+	ch <- e.evictedUnfetched
+	ch <- e.expiredUnfetched
+	ch <- e.slabsMoved
+	ch <- e.slabReassignRunning
 	ch <- e.lruCrawlerReclaimed
 	ch <- e.lruCrawlerItemsChecked
 	ch <- e.lruCrawlerMovesToCold
@@ -823,6 +900,9 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.extstoreBytesFragmented
 	ch <- e.extstoreBytesLimit
 	ch <- e.extstoreIOQueueDepth
+	ch <- e.extstoreGets
+	ch <- e.extstoreGetsAborted
+	ch <- e.extstoreRecaches
 	ch <- e.acceptingConnections
 	ch <- e.proxyConnRequests
 	ch <- e.proxyConnErrors
@@ -998,6 +1078,9 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 				e.parseAndNewMetric(ch, e.extstoreBytesFragmented, prometheus.GaugeValue, s, "extstore_bytes_fragmented"),
 				e.parseAndNewMetric(ch, e.extstoreBytesLimit, prometheus.GaugeValue, s, "extstore_limit_maxbytes"),
 				e.parseAndNewMetric(ch, e.extstoreIOQueueDepth, prometheus.GaugeValue, s, "extstore_io_queue"),
+				e.parseAndNewMetric(ch, e.extstoreGets, prometheus.CounterValue, s, "get_extstore"),
+				e.parseAndNewMetric(ch, e.extstoreGetsAborted, prometheus.CounterValue, s, "get_aborted_extstore"),
+				e.parseAndNewMetric(ch, e.extstoreRecaches, prometheus.CounterValue, s, "recache_from_extstore"),
 			)
 			if err != nil {
 				parseError = err
@@ -1048,6 +1131,13 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 			e.parseAndNewMetric(ch, e.itemStoreNoMemory, prometheus.CounterValue, s, "store_no_memory"),
 			e.parseAndNewMetric(ch, e.lruCrawlerStarts, prometheus.CounterValue, s, "lru_crawler_starts"),
 			e.parseAndNewMetric(ch, e.directReclaims, prometheus.CounterValue, s, "direct_reclaims"),
+			e.parseAndNewMetric(ch, e.getExpired, prometheus.CounterValue, s, "get_expired"),
+			e.parseAndNewMetric(ch, e.getFlushed, prometheus.CounterValue, s, "get_flushed"),
+			e.parseAndNewMetric(ch, e.evictedActive, prometheus.CounterValue, s, "evicted_active"),
+			e.parseAndNewMetric(ch, e.evictedUnfetched, prometheus.CounterValue, s, "evicted_unfetched"),
+			e.parseAndNewMetric(ch, e.expiredUnfetched, prometheus.CounterValue, s, "expired_unfetched"),
+			e.parseAndNewMetric(ch, e.slabsMoved, prometheus.CounterValue, s, "slabs_moved"),
+			e.parseAndNewMetric(ch, e.slabReassignRunning, prometheus.GaugeValue, s, "slab_reassign_running"),
 			e.parseAndNewMetric(ch, e.lruCrawlerItemsChecked, prometheus.CounterValue, s, "crawler_items_checked"),
 			e.parseAndNewMetric(ch, e.lruCrawlerReclaimed, prometheus.CounterValue, s, "crawler_reclaimed"),
 			e.parseAndNewMetric(ch, e.lruCrawlerMovesToCold, prometheus.CounterValue, s, "moves_to_cold"),
