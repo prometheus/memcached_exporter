@@ -21,7 +21,9 @@ jobs:
       MEMCACHED_PORT: "memcached:11211"
     services:
       memcached:
-        image: memcached
+        # Keep testing against the current upstream memcached image. This service
+        # is only used by a read-only test job with no secrets or publishing.
+        image: memcached # zizmor: ignore[unpinned-images]
         command: -vv
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
