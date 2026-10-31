@@ -14,6 +14,7 @@
 package exporter
 
 import (
+	"crypto/tls"
 	"net"
 	"strings"
 	"testing"
@@ -236,4 +237,53 @@ func TestParseStatsGlobalCounters(t *testing.T) {
 			t.Errorf("expected %s to be exported with extstore", name)
 		}
 	}
+}
+
+func TestNewTLSServerName(t *testing.T) {
+	logger := promslog.NewNopLogger()
+
+	t.Run("NilConfig", func(t *testing.T) {
+		e := New("memcached-a:11211", time.Second, logger, nil, true)
+		if e.tlsConfig != nil {
+			t.Errorf("expected nil TLS config, got %+v", e.tlsConfig)
+		}
+	})
+
+	t.Run("PerTargetHost", func(t *testing.T) {
+		base := &tls.Config{}
+		a := New("memcached-a.example.com:11211", time.Second, logger, base, true)
+		b := New("memcached-b.example.com:11211", time.Second, logger, base, true)
+		if got := a.tlsConfig.ServerName; got != "memcached-a.example.com" {
+			t.Errorf("ServerName for target a: got %q, want %q", got, "memcached-a.example.com")
+		}
+		if got := b.tlsConfig.ServerName; got != "memcached-b.example.com" {
+			t.Errorf("ServerName for target b: got %q, want %q", got, "memcached-b.example.com")
+		}
+		if base.ServerName != "" {
+			t.Errorf("shared base TLS config was modified: ServerName %q", base.ServerName)
+		}
+	})
+
+	t.Run("IPv6Target", func(t *testing.T) {
+		e := New("[::1]:11211", time.Second, logger, &tls.Config{}, true)
+		if got := e.tlsConfig.ServerName; got != "::1" {
+			t.Errorf("ServerName: got %q, want %q", got, "::1")
+		}
+	})
+
+	t.Run("ExplicitServerName", func(t *testing.T) {
+		base := &tls.Config{ServerName: "memcached.internal"}
+		e := New("memcached-a.example.com:11211", time.Second, logger, base, true)
+		if got := e.tlsConfig.ServerName; got != "memcached.internal" {
+			t.Errorf("ServerName: got %q, want %q", got, "memcached.internal")
+		}
+	})
+
+	t.Run("UnixSocket", func(t *testing.T) {
+		base := &tls.Config{}
+		e := New("/run/memcached/memcached.sock", time.Second, logger, base, true)
+		if e.tlsConfig != base || e.tlsConfig.ServerName != "" {
+			t.Errorf("expected unchanged TLS config for unix socket, got ServerName %q", e.tlsConfig.ServerName)
+		}
+	})
 }
