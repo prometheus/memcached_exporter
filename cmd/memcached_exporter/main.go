@@ -109,6 +109,7 @@ func main() {
 
 	http.Handle(*metricsPath, promhttp.Handler())
 	scraper := scraper.New(*timeout, logger, tlsConfig, *enableSlab)
+	prometheus.MustRegister(scraper)
 	http.Handle(*scrapePath, scraper.Handler())
 
 	if *metricsPath != "/" && *metricsPath != "" {

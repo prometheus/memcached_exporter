@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/promslog"
 )
 
@@ -78,6 +79,31 @@ func TestHandler(t *testing.T) {
 
 		if status := rr.Code; status != http.StatusBadRequest {
 			t.Errorf("handler returned wrong status code: got %d, want: %d", rr.Code, http.StatusBadRequest)
+		}
+	})
+
+	t.Run("Scrape counters", func(t *testing.T) {
+		t.Parallel()
+
+		s := New(1*time.Second, promslog.NewNopLogger(), nil, true)
+
+		req, err := http.NewRequest("GET", "/", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		http.HandlerFunc(s.Handler()).ServeHTTP(httptest.NewRecorder(), req)
+
+		expected := `
+# HELP memcached_exporter_scrape_errors_total Count of memcached exporter scape errors.
+# TYPE memcached_exporter_scrape_errors_total counter
+memcached_exporter_scrape_errors_total 1
+# HELP memcached_exporter_scrapes_total Count of memcached exporter scapes.
+# TYPE memcached_exporter_scrapes_total counter
+memcached_exporter_scrapes_total 1
+`
+		if err := testutil.CollectAndCompare(s, strings.NewReader(expected)); err != nil {
+			t.Error(err)
 		}
 	})
 }

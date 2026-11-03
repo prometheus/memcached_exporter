@@ -351,6 +351,33 @@ func TestAcceptanceScrapper(t *testing.T) {
 		}
 	}
 
+	// The scraper's own counters are exposed on the metrics endpoint.
+	resp, err = http.Get("http://localhost:9150/scrape")
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+
+	resp, err = http.Get("http://localhost:9150/metrics")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	body, err = io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, test := range []string{
+		`memcached_exporter_scrapes_total 2`,
+		`memcached_exporter_scrape_errors_total 1`,
+	} {
+		if !bytes.Contains(body, []byte(test)) {
+			t.Errorf("want metrics to include %q, have:\n%s", test, body)
+		}
+	}
+
 	cancel()
 
 	<-errc

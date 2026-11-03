@@ -1,5 +1,7 @@
 ## Unreleased
 
+* [BUGFIX] Expose `memcached_exporter_scrapes_total` and `memcached_exporter_scrape_errors_total` on the metrics endpoint
+
 ## 0.18.0 / 2026-10-22
 
 * [FEATURE] Export get_expired, get_flushed, extstore get and recache, unfetched, evicted_active, and slab rebalancer stats #347

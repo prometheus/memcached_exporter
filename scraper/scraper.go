@@ -52,6 +52,18 @@ func New(timeout time.Duration, logger *slog.Logger, tlsConfig *tls.Config, enab
 	}
 }
 
+// Describe implements prometheus.Collector.
+func (s *Scraper) Describe(ch chan<- *prometheus.Desc) {
+	s.scrapeCount.Describe(ch)
+	s.scrapeErrors.Describe(ch)
+}
+
+// Collect implements prometheus.Collector.
+func (s *Scraper) Collect(ch chan<- prometheus.Metric) {
+	s.scrapeCount.Collect(ch)
+	s.scrapeErrors.Collect(ch)
+}
+
 func (s *Scraper) Handler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		target := r.URL.Query().Get("target")
