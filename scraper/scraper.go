@@ -29,9 +29,6 @@ type Scraper struct {
 	timeout    time.Duration
 	tlsConfig  *tls.Config
 	enableSlab bool
-
-	scrapeCount  prometheus.Counter
-	scrapeErrors prometheus.Counter
 }
 
 func New(timeout time.Duration, logger *slog.Logger, tlsConfig *tls.Config, enableSlab bool) *Scraper {
@@ -41,14 +38,6 @@ func New(timeout time.Duration, logger *slog.Logger, tlsConfig *tls.Config, enab
 		timeout:    timeout,
 		tlsConfig:  tlsConfig,
 		enableSlab: enableSlab,
-		scrapeCount: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: "memcached_exporter_scrapes_total",
-			Help: "Count of memcached exporter scapes.",
-		}),
-		scrapeErrors: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: "memcached_exporter_scrape_errors_total",
-			Help: "Count of memcached exporter scape errors.",
-		}),
 	}
 }
 
@@ -56,13 +45,11 @@ func (s *Scraper) Handler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		target := r.URL.Query().Get("target")
 		s.logger.Debug("scrapping memcached", "target", target)
-		s.scrapeCount.Inc()
 
 		if target == "" {
 			errorStr := "'target' parameter must be specified"
 			s.logger.Warn(errorStr)
 			http.Error(w, errorStr, http.StatusBadRequest)
-			s.scrapeErrors.Inc()
 			return
 		}
 
