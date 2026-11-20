@@ -157,13 +157,31 @@ type Exporter struct {
 	unexpectedNapiIDs        *prometheus.Desc
 }
 
+// tlsConfigForServer returns the TLS config to use for server. If base does not
+// set a ServerName, a copy is returned with ServerName set to the host part of
+// server, so that the certificate of each target is verified against its own
+// host name. Addresses without a host part (e.g. unix sockets) are returned
+// unchanged.
+func tlsConfigForServer(base *tls.Config, server string) *tls.Config {
+	if base == nil || base.ServerName != "" {
+		return base
+	}
+	host, _, err := net.SplitHostPort(server)
+	if err != nil || host == "" {
+		return base
+	}
+	c := base.Clone()
+	c.ServerName = host
+	return c
+}
+
 // New returns an initialized exporter.
 func New(server string, timeout time.Duration, logger *slog.Logger, tlsConfig *tls.Config, enableSlab bool) *Exporter {
 	return &Exporter{
 		address:    server,
 		timeout:    timeout,
 		logger:     logger,
-		tlsConfig:  tlsConfig,
+		tlsConfig:  tlsConfigForServer(tlsConfig, server),
 		enableSlab: enableSlab,
 		up: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, "", "up"),

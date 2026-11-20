@@ -48,7 +48,9 @@ using the `--web.config.file` parameter. The format of the file is described
 [in the exporter-toolkit repository](https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md).
 
 To use TLS for connections to memcached, use the `--memcached.tls.*` flags.
-See `memcached_exporter --help` for details.
+See `memcached_exporter --help` for details. Unless `--memcached.tls.server-name`
+is set, the server certificate is verified against the host of
+`--memcached.address`, or of the `target` parameter for multi-target scrapes.
 
 ## Multi-target
 

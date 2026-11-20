@@ -68,9 +68,11 @@ func main() {
 		err       error
 	)
 	if *enableTLS {
-		if *serverName == "" {
-			*serverName, _, err = net.SplitHostPort(*address)
-			if err != nil {
+		// Without --memcached.tls.server-name, the server name is taken from
+		// the host of each target (see exporter.New). That doesn't work for a
+		// unix socket address, so fail early in that case.
+		if *serverName == "" && *address != "" {
+			if _, _, err = net.SplitHostPort(*address); err != nil {
 				if strings.Contains(*address, "/") {
 					logger.Error("If --memcached.tls.enable is set and --memcached.address is a unix socket, " +
 						"you must also specify --memcached.tls.server-name")
