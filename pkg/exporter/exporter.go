@@ -34,6 +34,56 @@ const (
 
 var errKeyNotFound = errors.New("key not found")
 
+// globalStat maps a single key of the "stats" output to a metric. Keys that
+// the server does not report, for example because it runs an older version,
+// are skipped.
+type globalStat struct {
+	key       string
+	valueType prometheus.ValueType
+	desc      *prometheus.Desc
+}
+
+func newGlobalStats() []globalStat {
+	counter := func(key, name, help string) globalStat {
+		return globalStat{key, prometheus.CounterValue, prometheus.NewDesc(prometheus.BuildFQName(Namespace, "", name), help, nil, nil)}
+	}
+	gauge := func(key, name, help string) globalStat {
+		return globalStat{key, prometheus.GaugeValue, prometheus.NewDesc(prometheus.BuildFQName(Namespace, "", name), help, nil, nil)}
+	}
+	return []globalStat{
+		gauge("threads", "threads", "Number of worker threads requested."),
+		gauge("connection_structures", "connection_structures", "Number of connection structures allocated by the server."),
+		counter("malloc_fails", "malloc_fails_total", "Total number of memory allocation failures."),
+		counter("auth_cmds", "auth_commands_total", "Total number of authentication commands handled."),
+		counter("auth_errors", "auth_errors_total", "Total number of failed authentications."),
+		gauge("hash_power_level", "hash_power_level", "Current size multiplier of the hash table."),
+		gauge("hash_bytes", "hash_bytes", "Bytes currently used by the hash table."),
+		gauge("hash_is_expanding", "hash_expanding", "Whether the hash table is currently being expanded (1) or not (0)."),
+		gauge("response_obj_count", "response_objects", "Number of response objects currently in use."),
+		gauge("response_obj_bytes", "response_objects_bytes", "Bytes used by response objects."),
+		counter("response_obj_oom", "response_objects_oom_total", "Total number of times a response object could not be allocated."),
+		gauge("read_buf_count", "read_buffers", "Number of read buffers currently allocated."),
+		gauge("read_buf_bytes", "read_buffers_bytes", "Bytes used by read buffers."),
+		gauge("read_buf_bytes_free", "read_buffers_free_bytes", "Bytes in read buffers that are free for reuse."),
+		counter("read_buf_oom", "read_buffers_oom_total", "Total number of times a read buffer could not be allocated."),
+		gauge("lru_crawler_running", "lru_crawler_running", "Number of LRU crawlers currently running."),
+		counter("lru_maintainer_juggles", "lru_maintainer_juggles_total", "Total number of times the LRU maintainer thread woke up to move items."),
+		counter("lru_bumps_dropped", "lru_bumps_dropped_total", "Total number of LRU bump requests dropped because the bump buffer was full."),
+		gauge("slab_global_page_pool", "slab_global_page_pool", "Number of slab pages in the global page pool."),
+		counter("slab_reassign_rescues", "slab_reassign_rescues_total", "Total number of items rescued by the slab rebalancer."),
+		counter("slab_reassign_chunk_rescues", "slab_reassign_chunk_rescues_total", "Total number of chunked items rescued by the slab rebalancer."),
+		counter("slab_reassign_inline_reclaim", "slab_reassign_inline_reclaim_total", "Total number of items reclaimed inline by the slab rebalancer."),
+		counter("slab_reassign_busy_items", "slab_reassign_busy_items_total", "Total number of items the slab rebalancer could not move because they were busy."),
+		counter("slab_reassign_busy_deletes", "slab_reassign_busy_deletes_total", "Total number of busy items the slab rebalancer had to delete."),
+		counter("slab_reassign_busy_nomem", "slab_reassign_busy_nomem_total", "Total number of times the slab rebalancer found a busy item and no memory to rescue it."),
+		counter("log_worker_dropped", "log_worker_dropped_total", "Total number of log entries dropped by worker threads."),
+		counter("log_worker_written", "log_worker_written_total", "Total number of log entries written by worker threads."),
+		counter("log_watcher_skipped", "log_watcher_skipped_total", "Total number of log entries skipped by watchers because they were too slow."),
+		counter("log_watcher_sent", "log_watcher_sent_total", "Total number of log entries sent to watchers."),
+		gauge("log_watchers", "log_watchers", "Number of clients currently watching the log."),
+	}
+}
+
 // Exporter collects metrics from a memcached server.
 type Exporter struct {
 	address    string
@@ -41,6 +91,10 @@ type Exporter struct {
 	logger     *slog.Logger
 	tlsConfig  *tls.Config
 	enableSlab bool
+
+	// globalStats holds the simple one to one mappings from a key of the
+	// "stats" output to a metric without labels.
+	globalStats []globalStat
 
 	up                       *prometheus.Desc
 	uptime                   *prometheus.Desc
@@ -160,11 +214,12 @@ type Exporter struct {
 // New returns an initialized exporter.
 func New(server string, timeout time.Duration, logger *slog.Logger, tlsConfig *tls.Config, enableSlab bool) *Exporter {
 	return &Exporter{
-		address:    server,
-		timeout:    timeout,
-		logger:     logger,
-		tlsConfig:  tlsConfig,
-		enableSlab: enableSlab,
+		address:     server,
+		timeout:     timeout,
+		logger:      logger,
+		tlsConfig:   tlsConfig,
+		enableSlab:  enableSlab,
+		globalStats: newGlobalStats(),
 		up: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, "", "up"),
 			"Could the memcached server be reached.",
@@ -870,6 +925,9 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.directReclaims
 	ch <- e.getExpired
 	ch <- e.getFlushed
+	for _, g := range e.globalStats {
+		ch <- g.desc
+	}
 	ch <- e.evictedActive
 	ch <- e.evictedUnfetched
 	ch <- e.expiredUnfetched
@@ -1107,6 +1165,12 @@ func (e *Exporter) parseStats(ch chan<- prometheus.Metric, stats map[net.Addr]me
 				e.parseAndNewMetric(ch, e.unexpectedNapiIDs, prometheus.CounterValue, s, "unexpected_napi_ids"),
 			)
 			if err != nil {
+				parseError = err
+			}
+		}
+
+		for _, g := range e.globalStats {
+			if err := e.parseAndNewMetric(ch, g.desc, g.valueType, s, g.key); err != nil {
 				parseError = err
 			}
 		}

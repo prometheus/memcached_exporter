@@ -1,5 +1,7 @@
 ## Unreleased
 
+* [FEATURE] Export worker threads, hash table, buffer, authentication, LRU maintainer, slab rebalancer and log stats #358
+
 ## 0.18.0 / 2026-10-22
 
 * [FEATURE] Export get_expired, get_flushed, extstore get and recache, unfetched, evicted_active, and slab rebalancer stats #347
